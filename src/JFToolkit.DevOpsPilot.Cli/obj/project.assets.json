@@ -30,7 +30,7 @@
     "/root/.nuget/packages/": {}
   },
   "project": {
-    "version": "0.1.0",
+    "version": "0.2.0",
     "restore": {
       "projectUniqueName": "/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/JFToolkit.DevOpsPilot.Cli.csproj",
       "projectName": "JFToolkit.DevOpsPilot",

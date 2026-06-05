@@ -1,11 +1,16 @@
 using JFToolkit.DevOpsPilot;
 using JFToolkit.DevOpsPilot.Chat;
 using JFToolkit.DevOpsPilot.Models;
+using JFToolkit.DevOpsPilot.Services;
+
+// Start version check in background (non-blocking)
+UpdateChecker.CheckInBackground();
 
 if (args.Length == 0)
 {
     PrintLogo();
     PrintUsage();
+    UpdateChecker.ShowIfAvailable();
     return 1;
 }
 
@@ -176,6 +181,7 @@ static void PrintItems(List<WorkItem> items)
 static async Task RunChatAsync(string[] args)
 {
     PrintLogo();
+    UpdateChecker.ShowIfAvailable();
     var pilot = DevOpsPilot.Create();
 
     var available = await pilot.IsLlmAvailableAsync();
