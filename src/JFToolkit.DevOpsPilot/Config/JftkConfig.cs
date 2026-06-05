@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace JFToolkit.DevOpsPilot.Config;
 
-internal sealed class JftkConfig
+public sealed class JftkConfig
 {
     public string? AzureDevOpsPat { get; set; }
     public string? AzureDevOpsOrg { get; set; }

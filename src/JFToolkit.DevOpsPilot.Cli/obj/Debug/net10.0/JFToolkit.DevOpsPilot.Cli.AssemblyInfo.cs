@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyDescriptionAttribute(("\n      CLI tool for managing Azure DevOps projects with local LLM (Ollama).\n     " +
     " Analyze workflows, manage work items, get AI suggestions — from terminal.\n    "))]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("0.1.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.1.0+842520ac1c8ad6032e73484486c727e3fe120d76")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("0.1.0+84d94933ec957efd7d314b092729d1b1cb095d94")]
 [assembly: System.Reflection.AssemblyProductAttribute("JFToolkit.DevOpsPilot.Cli")]
 [assembly: System.Reflection.AssemblyTitleAttribute("JFToolkit.DevOpsPilot.Cli")]
 [assembly: System.Reflection.AssemblyVersionAttribute("0.1.0.0")]

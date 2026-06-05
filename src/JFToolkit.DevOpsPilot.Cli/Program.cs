@@ -1,4 +1,5 @@
 using JFToolkit.DevOpsPilot;
+using JFToolkit.DevOpsPilot.Chat;
 using JFToolkit.DevOpsPilot.Models;
 
 if (args.Length == 0)
@@ -68,6 +69,10 @@ try
             Console.WriteLine(await DevOpsPilot.Create().SuggestAsync(args[1]));
             break;
 
+        case "chat":
+            await RunChatAsync(args);
+            break;
+
         default:
             Console.Error.WriteLine($"Unknown command: {cmd}");
             PrintUsage();
@@ -97,9 +102,10 @@ static void PrintUsage()
     Console.WriteLine("  devops-pilot add <project> <type> <title> Create a work item");
     Console.WriteLine("  devops-pilot done <id>                    Close a work item");
     Console.WriteLine("  devops-pilot suggest <project>            LLM suggests what to work on");
+    Console.WriteLine("  devops-pilot chat [project]               Interactive AI chat about your tasks");
     Console.WriteLine();
     Console.WriteLine("Install: dotnet tool install -g JFToolkit.DevOpsPilot");
-    Console.WriteLine("Requires: Ollama (optional, for scan/suggest), Azure DevOps PAT");
+    Console.WriteLine("Requires: Ollama (optional, for scan/suggest/chat), Azure DevOps PAT");
 }
 
 static void Require(string[] a, int idx, string usage)
@@ -145,4 +151,53 @@ static void PrintItems(List<WorkItem> items)
         Console.WriteLine($"  #{i.Id,-6} [{i.Type,-12}] {i.State,-10}{assigned} {i.Title}");
     }
     Console.WriteLine($"  — {items.Count} item(s) —");
+}
+
+static async Task RunChatAsync(string[] args)
+{
+    var pilot = DevOpsPilot.Create();
+
+    var available = await pilot.IsLlmAvailableAsync();
+    if (!available)
+    {
+        Console.WriteLine("Ollama is not running. Start it with 'ollama serve' and try again.");
+        return;
+    }
+
+    var config = JFToolkit.DevOpsPilot.Config.JftkConfig.Load();
+    var llm = new JFToolkit.DevOpsPilot.Services.OllamaProvider(
+        config.OllamaModel ?? "qwen2.5:7b",
+        config.OllamaUrl ?? "http://localhost:11434");
+
+    var agent = new ChatAgent(llm, pilot);
+
+    var project = args.ElementAtOrDefault(1);
+    if (project != null)
+    {
+        agent.DetectProject($"scan {project}");
+        Console.WriteLine($"Prosjekt: {project}");
+    }
+    else
+    {
+        Console.WriteLine("Prosjekt ikke angitt. Si 'analyser <navn>' i chatten for å velge.");
+    }
+
+    Console.WriteLine("Skriv /exit for å avslutte.\n");
+
+    while (true)
+    {
+        Console.Write("> ");
+        var input = Console.ReadLine();
+        if (string.IsNullOrWhiteSpace(input)) continue;
+        if (input.Trim() == "/exit") break;
+
+        agent.DetectProject(input);
+
+        Console.Write("\n");
+        var response = await agent.SendAsync(input);
+        Console.WriteLine(response);
+        Console.WriteLine();
+    }
+
+    Console.WriteLine("Ha det!");
 }
