@@ -1,0 +1,12 @@
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net10.0/JFToolkit.DevOpsPilot.GeneratedMSBuildEditorConfig.editorconfig
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net10.0/JFToolkit.DevOpsPilot.AssemblyInfoInputs.cache
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net10.0/JFToolkit.DevOpsPilot.AssemblyInfo.cs
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net10.0/JFToolkit.DevOpsPilot.csproj.CoreCompileInputs.cache
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net10.0/JFToolkit.DevOpsPilot.sourcelink.json
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/bin/Debug/net10.0/JFToolkit.DevOpsPilot.deps.json
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/bin/Debug/net10.0/JFToolkit.DevOpsPilot.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/bin/Debug/net10.0/JFToolkit.DevOpsPilot.pdb
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net10.0/JFToolkit.DevOpsPilot.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net10.0/refint/JFToolkit.DevOpsPilot.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net10.0/JFToolkit.DevOpsPilot.pdb
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net10.0/ref/JFToolkit.DevOpsPilot.dll

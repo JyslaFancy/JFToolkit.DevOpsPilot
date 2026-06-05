@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v10.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v10.0": {
+      "ConsoleDemo/1.0.0": {
+        "dependencies": {
+          "JFToolkit.DevOpsPilot": "0.1.0"
+        },
+        "runtime": {
+          "ConsoleDemo.dll": {}
+        }
+      },
+      "JFToolkit.DevOpsPilot/0.1.0": {
+        "runtime": {
+          "JFToolkit.DevOpsPilot.dll": {
+            "assemblyVersion": "0.1.0.0",
+            "fileVersion": "0.1.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ConsoleDemo/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "JFToolkit.DevOpsPilot/0.1.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
