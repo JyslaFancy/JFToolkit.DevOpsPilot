@@ -4,6 +4,7 @@ using JFToolkit.DevOpsPilot.Models;
 
 if (args.Length == 0)
 {
+    PrintLogo();
     PrintUsage();
     return 1;
 }
@@ -89,10 +90,24 @@ return 0;
 
 // ── Helpers ──
 
+static void PrintLogo()
+{
+    Console.WriteLine(@"
+   ╔══════════════════════════════════════════════════════════╗
+   ║    ____            ____             ____  _ __      __   ║
+   ║   / __ \___ _   __/ __ \____  _____/ __ \(_) /___  / /_  ║
+   ║  / / / / _ \ | / / / / / __ \/ ___/ /_/ / / / __ \/ __/  ║
+   ║ / /_/ /  __/ |/ / /_/ / /_/ (__  ) ____/ / / /_/ / /_    ║
+   ║/_____/\___/|___/\____/ .___/____/_/   /_/_/\____/\__/    ║
+   ║                     /_/                                   ║
+   ╠══════════════════════════════════════════════════════════╣
+   ║    Azure DevOps + Lokal AI  •  devops-pilot chat         ║
+   ╚══════════════════════════════════════════════════════════╝
+");
+}
+
 static void PrintUsage()
 {
-    Console.WriteLine("JFToolkit.DevOpsPilot — Azure DevOps + local LLM (Ollama)");
-    Console.WriteLine();
     Console.WriteLine("Usage:");
     Console.WriteLine("  devops-pilot setup");
     Console.WriteLine("  devops-pilot scan <project>              Analyze workflow (Scrum/Kanban/etc.)");
@@ -155,6 +170,7 @@ static void PrintItems(List<WorkItem> items)
 
 static async Task RunChatAsync(string[] args)
 {
+    PrintLogo();
     var pilot = DevOpsPilot.Create();
 
     var available = await pilot.IsLlmAvailableAsync();
