@@ -1,0 +1,7 @@
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Cli
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Cli.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Cli.deps.json
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Cli.runtimeconfig.json
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Cli.pdb
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Core.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Core.pdb

@@ -5,10 +5,10 @@
   },
   "projects": {
     "/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/JFToolkit.DevOpsPilot.csproj": {
-      "version": "0.1.0",
+      "version": "1.0.0",
       "restore": {
         "projectUniqueName": "/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/JFToolkit.DevOpsPilot.csproj",
-        "projectName": "JFToolkit.DevOpsPilot",
+        "projectName": "JFToolkit.DevOpsPilot.Core",
         "projectPath": "/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/JFToolkit.DevOpsPilot.csproj",
         "packagesPath": "/root/.nuget/packages/",
         "outputPath": "/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/",

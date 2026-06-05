@@ -6,20 +6,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>JFToolkit.DevOpsPilot</RootNamespace>
-    <AssemblyName>JFToolkit.DevOpsPilot</AssemblyName>
+    <AssemblyName>JFToolkit.DevOpsPilot.Core</AssemblyName>
+    <IsPackable>false</IsPackable>
 
-    <PackageId>JFToolkit.DevOpsPilot</PackageId>
-    <Version>0.1.0</Version>
-    <Authors>Harald Daltveit</Authors>
-    <Description>
-      Zero-dependency .NET library + CLI for managing Azure DevOps projects
-      with local LLM assistance (Ollama). Analyze project workflows, manage
-      work items, and get AI-powered suggestions for what to work on next.
-    </Description>
-    <PackageTags>azure-devops;llm;ollama;devops;work-items;cli</PackageTags>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageReadmeFile>README.md</PackageReadmeFile>
-    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

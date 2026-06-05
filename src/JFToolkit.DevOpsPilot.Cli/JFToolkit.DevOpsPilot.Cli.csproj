@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>JFToolkit.DevOpsPilot.Cli</RootNamespace>
+
+    <!-- Dotnet Global Tool -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>devops-pilot</ToolCommandName>
+    <PackageId>JFToolkit.DevOpsPilot</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Harald Daltveit</Authors>
+    <Description>
+      CLI tool for managing Azure DevOps projects with local LLM (Ollama).
+      Analyze workflows, manage work items, get AI suggestions — from terminal.
+    </Description>
+    <PackageTags>azure-devops;llm;ollama;devops;work-items;cli;dotnet-tool</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JFToolkit.DevOpsPilot\JFToolkit.DevOpsPilot.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

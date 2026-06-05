@@ -1,8 +1,0 @@
-<Solution>
-  <Folder Name="/samples/">
-    <Project Path="samples/ConsoleDemo/ConsoleDemo.csproj" />
-  </Folder>
-  <Folder Name="/src/">
-    <Project Path="src/JFToolkit.DevOpsPilot/JFToolkit.DevOpsPilot.csproj" />
-  </Folder>
-</Solution>

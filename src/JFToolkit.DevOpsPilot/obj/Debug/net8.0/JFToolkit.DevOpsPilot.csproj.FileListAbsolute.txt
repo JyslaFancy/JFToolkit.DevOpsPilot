@@ -3,10 +3,10 @@
 /tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/JFToolkit.DevOpsPilot.AssemblyInfo.cs
 /tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/JFToolkit.DevOpsPilot.csproj.CoreCompileInputs.cache
 /tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/JFToolkit.DevOpsPilot.sourcelink.json
-/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/bin/Debug/net8.0/JFToolkit.DevOpsPilot.deps.json
-/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/bin/Debug/net8.0/JFToolkit.DevOpsPilot.dll
-/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/bin/Debug/net8.0/JFToolkit.DevOpsPilot.pdb
-/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/JFToolkit.DevOpsPilot.dll
-/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/refint/JFToolkit.DevOpsPilot.dll
-/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/JFToolkit.DevOpsPilot.pdb
-/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/ref/JFToolkit.DevOpsPilot.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/bin/Debug/net8.0/JFToolkit.DevOpsPilot.Core.deps.json
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/bin/Debug/net8.0/JFToolkit.DevOpsPilot.Core.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/bin/Debug/net8.0/JFToolkit.DevOpsPilot.Core.pdb
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/JFToolkit.DevOpsPilot.Core.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/refint/JFToolkit.DevOpsPilot.Core.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/JFToolkit.DevOpsPilot.Core.pdb
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Debug/net8.0/ref/JFToolkit.DevOpsPilot.Core.dll

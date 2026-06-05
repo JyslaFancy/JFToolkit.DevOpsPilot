@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>JFToolkit.DevOpsPilot</id>
+    <version>0.1.0</version>
+    <authors>Harald Daltveit</authors>
+    <license type="expression">MIT</license>
+    <licenseUrl>https://licenses.nuget.org/MIT</licenseUrl>
+    <readme>README.md</readme>
+    <description>CLI tool for managing Azure DevOps projects with local LLM (Ollama).
+      Analyze workflows, manage work items, get AI suggestions — from terminal.</description>
+    <tags>azure-devops llm ollama devops work-items cli dotnet-tool</tags>
+    <packageTypes>
+      <packageType name="DotnetTool" />
+    </packageTypes>
+    <repository type="git" commit="842520ac1c8ad6032e73484486c727e3fe120d76" />
+  </metadata>
+  <files>
+    <file src="/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/obj/Release/net10.0/DotnetToolSettings.xml" target="tools/net10.0/any/DotnetToolSettings.xml" />
+    <file src="/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Cli.deps.json" target="tools/net10.0/any/JFToolkit.DevOpsPilot.Cli.deps.json" />
+    <file src="/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Cli.dll" target="tools/net10.0/any/JFToolkit.DevOpsPilot.Cli.dll" />
+    <file src="/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Cli.pdb" target="tools/net10.0/any/JFToolkit.DevOpsPilot.Cli.pdb" />
+    <file src="/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Cli.runtimeconfig.json" target="tools/net10.0/any/JFToolkit.DevOpsPilot.Cli.runtimeconfig.json" />
+    <file src="/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Core.dll" target="tools/net10.0/any/JFToolkit.DevOpsPilot.Core.dll" />
+    <file src="/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot.Cli/bin/Release/net10.0/publish/JFToolkit.DevOpsPilot.Core.pdb" target="tools/net10.0/any/JFToolkit.DevOpsPilot.Core.pdb" />
+    <file src="/tmp/JFToolkit.DevOpsPilot/README.md" target="/README.md" />
+  </files>
+</package>

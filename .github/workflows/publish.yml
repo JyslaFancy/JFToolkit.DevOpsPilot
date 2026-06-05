@@ -14,5 +14,5 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.x'
-      - run: dotnet pack src/JFToolkit.DevOpsPilot/JFToolkit.DevOpsPilot.csproj -c Release -o ./nupkg
+      - run: dotnet pack src/JFToolkit.DevOpsPilot.Cli/JFToolkit.DevOpsPilot.Cli.csproj -c Release -o ./nupkg
       - run: dotnet nuget push ./nupkg/*.nupkg --source nuget.org --api-key ${{ secrets.NUGET_API_KEY }} --skip-duplicate
