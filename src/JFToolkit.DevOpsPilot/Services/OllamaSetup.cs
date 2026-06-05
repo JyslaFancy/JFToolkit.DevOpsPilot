@@ -30,7 +30,7 @@ public static class OllamaSetup
         return "Visit https://ollama.com/download";
     }
 
-    public static async Task<bool> PullModelAsync(string model = "qwen2.5:7b")
+    public static async Task<bool> PullModelAsync(string model = "qwen2.5:7b", int timeoutMinutes = 30)
     {
         if (!IsInstalled()) return false;
         try
@@ -44,7 +44,30 @@ public static class OllamaSetup
             };
             using var proc = Process.Start(psi);
             if (proc == null) return false;
-            await proc.WaitForExitAsync();
+
+            // Read stdout asynchronously (prevent pipe-buffer deadlock)
+            var readOut = proc.StandardOutput.ReadToEndAsync();
+
+            // Stream stderr lines to console — ollama pull shows progress on stderr
+            var cts = new CancellationTokenSource(TimeSpan.FromMinutes(timeoutMinutes));
+            var readErr = Task.Run(async () =>
+            {
+                var sb = new System.Text.StringBuilder();
+                while (!cts.Token.IsCancellationRequested)
+                {
+                    var line = await proc.StandardError.ReadLineAsync(cts.Token);
+                    if (line == null) break;
+                    Console.WriteLine($"  {line}");
+                    sb.AppendLine(line);
+                }
+                return sb.ToString();
+            });
+
+            try { await proc.WaitForExitAsync(cts.Token); }
+            catch (OperationCanceledException) { proc.Kill(); Console.Error.WriteLine("Timed out."); return false; }
+
+            var stdout = await readOut;
+            var stderr = await readErr;
             return proc.ExitCode == 0;
         }
         catch { return false; }
@@ -64,8 +87,10 @@ public static class OllamaSetup
             };
             using var proc = Process.Start(psi);
             if (proc == null) return false;
+            // Read FIRST, wait later — classic deadlock fix.
+            var output = proc.StandardOutput.ReadToEnd();
             proc.WaitForExit(5000);
-            return proc.StandardOutput.ReadToEnd().Contains(model, StringComparison.OrdinalIgnoreCase);
+            return output.Contains(model, StringComparison.OrdinalIgnoreCase);
         }
         catch { return false; }
     }
