@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("JFToolkit.DevOpsPilot.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+dc928bf9c62bba405c7323ed2110ba82db5bf8a3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+524c291248bb0340374774cf57f25988ace00ab9")]
 [assembly: System.Reflection.AssemblyProductAttribute("JFToolkit.DevOpsPilot.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("JFToolkit.DevOpsPilot.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
