@@ -41,10 +41,23 @@ public class OllamaProvider : ILlmProvider
 
         var content = new StringContent(body, Encoding.UTF8, "application/json");
         var resp = await _http.PostAsync($"{_baseUrl}/api/chat", content);
-        resp.EnsureSuccessStatusCode();
+
+        if (!resp.IsSuccessStatusCode)
+        {
+            var errBody = await resp.Content.ReadAsStringAsync();
+            throw new HttpRequestException(
+                $"Ollama API error ({resp.StatusCode}) for model '{_model}': {Trunc(errBody, 200)}");
+        }
 
         var json = await resp.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
-        return doc.RootElement.GetProperty("message").GetProperty("content").GetString()?.Trim() ?? "";
+
+        var msg = doc.RootElement.GetProperty("message").GetProperty("content").GetString();
+        if (string.IsNullOrWhiteSpace(msg))
+            throw new InvalidOperationException($"Ollama model '{_model}' returned empty response.");
+
+        return msg.Trim();
     }
+
+    private static string Trunc(string s, int max) => s.Length <= max ? s : s[..max] + "...";
 }

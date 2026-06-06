@@ -28,6 +28,13 @@ try
         case "scan":
             Require(args, 1, "devops-pilot scan <project>");
             var pilot = DevOpsPilot.Create();
+            if (!await pilot.IsLlmAvailableAsync())
+            {
+                Console.Error.WriteLine("LLM is not available. Check your config (~/.jftoolkit/config.json).");
+                Console.Error.WriteLine("For Ollama: ensure 'ollama serve' is running and model is pulled.");
+                Console.Error.WriteLine("For cloud providers: verify API key is set correctly.");
+                return 1;
+            }
             Console.WriteLine($"Analyzing '{args[1]}'...\n");
             var report = await pilot.AnalyzeAsync(args[1]);
             PrintReport(report);
@@ -72,8 +79,15 @@ try
 
         case "suggest":
             Require(args, 1, "devops-pilot suggest <project>");
+            var sp = DevOpsPilot.Create();
+            if (!await sp.IsLlmAvailableAsync())
+            {
+                Console.Error.WriteLine("LLM is not available. Check your config (~/.jftoolkit/config.json).");
+                Console.Error.WriteLine("For Ollama: ensure 'ollama serve' is running and model is pulled.");
+                return 1;
+            }
             Console.WriteLine("Analyzing with LLM...\n");
-            Console.WriteLine(await DevOpsPilot.Create().SuggestAsync(args[1]));
+            Console.WriteLine(await sp.SuggestAsync(args[1]));
             break;
 
         case "memory":
