@@ -12,7 +12,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>devops-pilot</ToolCommandName>
     <PackageId>JFToolkit.DevOpsPilot</PackageId>
-    <Version>0.2.1</Version>
+    <Version>0.3.0</Version>
     <Authors>Harald Daltveit</Authors>
     <Description>
       CLI tool for managing Azure DevOps projects with local LLM (Ollama).

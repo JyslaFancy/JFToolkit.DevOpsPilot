@@ -1,4 +1,5 @@
 using System.Text.Json;
+using JFToolkit.DevOpsPilot.Memory;
 using JFToolkit.DevOpsPilot.Services;
 
 namespace JFToolkit.DevOpsPilot.Chat;
@@ -6,13 +7,17 @@ namespace JFToolkit.DevOpsPilot.Chat;
 /// <summary>
 /// Interactive chat agent that uses an LLM to understand natural language
 /// and execute Azure DevOps operations via DevOpsPilot.
+/// With MemPalace cross-session memory.
 /// </summary>
 public class ChatAgent
 {
     private readonly ILlmProvider _llm;
     private readonly DevOpsPilot _pilot;
+    private readonly MemPalace _mem;
     private readonly List<ChatMessage> _history = [];
     private string _currentProject = "";
+    private int _sessionId;
+    private int _seq;
 
     private const string SystemPrompt = """
         You are a DevOps assistant with access to an Azure DevOps project.
@@ -48,16 +53,56 @@ public class ChatAgent
         If no action is needed, use "chat" and provide a helpful message.
         """;
 
-    public ChatAgent(ILlmProvider llm, DevOpsPilot pilot)
+    public ChatAgent(ILlmProvider llm, DevOpsPilot pilot, MemPalace mem)
     {
         _llm = llm;
         _pilot = pilot;
+        _mem = mem;
+    }
+
+    /// <summary>
+    /// Start a new session for the given project. Loads recent chat history
+    /// and injects project memories into context.
+    /// </summary>
+    public void StartSession(string project)
+    {
+        _currentProject = project;
+        _sessionId = _mem.CreateSession(project);
+        _seq = 0;
+
+        // Load recent messages from past sessions
+        var recent = _mem.LoadRecentMessages(project, count: 20);
+        _history.AddRange(recent);
+
+        // Inject project memory into system prompt context
+        var memoryContext = _mem.BuildMemoryContext(project);
+        if (!string.IsNullOrEmpty(memoryContext))
+        {
+            // Prepend memory context as a system message
+            _history.Insert(0, new ChatMessage("system", memoryContext.TrimEnd()));
+        }
     }
 
     /// <summary>Process a user message and return the assistant's response.</summary>
     public async Task<string> SendAsync(string userMessage)
     {
+        _seq++;
+
+        // Handle slash commands
+        var slashResult = HandleSlashCommand(userMessage.Trim());
+        if (slashResult != null)
+        {
+            // Save both the command (as user) and response
+            _mem.SaveMessage(_sessionId, _seq, "user", userMessage);
+            _seq++;
+            _mem.SaveMessage(_sessionId, _seq, "assistant", slashResult);
+            _history.Add(new ChatMessage("user", userMessage));
+            _history.Add(new ChatMessage("assistant", slashResult));
+            return slashResult;
+        }
+
         _history.Add(new ChatMessage("user", userMessage));
+        _mem.SaveMessage(_sessionId, _seq, "user", userMessage);
 
         var projectContext = string.IsNullOrEmpty(_currentProject)
             ? ""
@@ -99,6 +144,8 @@ public class ChatAgent
             message = "Du må først velge et prosjekt. Si for eksempel 'analyser MyProject'.";
         }
 
+        _seq++;
+        _mem.SaveMessage(_sessionId, _seq, "assistant", message);
         _history.Add(new ChatMessage("assistant", message));
         return message;
     }
@@ -106,7 +153,6 @@ public class ChatAgent
     /// <summary>Detect and set the current project from user message.</summary>
     public string? DetectProject(string userMessage)
     {
-        // Simple heuristic: look for known project names or "analyser X" / "scan X"
         var lower = userMessage.ToLowerInvariant();
         var patterns = new[] { "analyser ", "scan ", "list ", "prosjekt ", "project " };
         foreach (var p in patterns)
@@ -119,11 +165,87 @@ public class ChatAgent
                 if (word.Length > 0)
                 {
                     _currentProject = word;
+                    if (_sessionId == 0)
+                        StartSession(word);
                     return word;
                 }
             }
         }
         return null;
+    }
+
+    /// <summary>
+    /// Handle built-in slash commands for memory management.
+    /// Returns the response string, or null if not a slash command.
+    /// </summary>
+    private string? HandleSlashCommand(string input)
+    {
+        if (!input.StartsWith('/')) return null;
+
+        var parts = input[1..].Split(' ', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 0) return null;
+        var cmd = parts[0].ToLowerInvariant();
+        var rest = parts.Length > 1 ? parts[1] : "";
+
+        if (string.IsNullOrEmpty(_currentProject))
+            return "Du må først velge et prosjekt for å bruke minne-kommandoer.";
+
+        switch (cmd)
+        {
+            case "memory":
+            case "mem":
+                var mems = _mem.GetAllMemories(_currentProject);
+                if (mems.Count == 0)
+                    return $"Ingen lagrede minner for '{_currentProject}'.\nBruk /remember <nøkkel> <verdi> for å lagre fakta.";
+                var lines = new List<string> { $"**Minner for {_currentProject}:**" };
+                foreach (var (k, v) in mems)
+                    lines.Add($"  • **{k}**: {v}");
+                return string.Join('\n', lines);
+
+            case "remember":
+            case "rem":
+                var eqIdx = rest.IndexOf('=');
+                if (eqIdx < 0) { eqIdx = rest.IndexOf(' '); }
+                if (eqIdx < 0)
+                    return "Bruk: /remember <nøkkel> <verdi>\nEksempel: /remember CI bruker GitHub Actions";
+                var key = rest[..eqIdx].Trim();
+                var val = rest[(eqIdx + 1)..].Trim();
+                if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(val))
+                    return "Både nøkkel og verdi må oppgis.";
+                _mem.Remember(_currentProject, key, val);
+                return $"✓ Husker: **{key}** = {val}";
+
+            case "forget":
+                if (string.IsNullOrWhiteSpace(rest))
+                    return "Bruk: /forget <nøkkel>";
+                _mem.Forget(_currentProject, rest.Trim());
+                return $"✓ Glemt: **{rest.Trim()}**";
+
+            case "history":
+            case "hist":
+                var count = 10;
+                if (int.TryParse(rest, out var n) && n > 0 && n <= 50)
+                    count = n;
+                var recent = _mem.LoadRecentMessages(_currentProject, count);
+                if (recent.Count == 0)
+                    return "Ingen tidligere meldinger for dette prosjektet.";
+                var histLines = new List<string> { $"**Siste {recent.Count} meldinger for {_currentProject}:**" };
+                foreach (var m in recent)
+                    histLines.Add($"  [{m.Role}] {Truncate(m.Content, 120)}");
+                return string.Join('\n', histLines);
+
+            case "sessions":
+                var sessions = _mem.ListSessions(_currentProject);
+                if (sessions.Count == 0)
+                    return $"Ingen tidligere økter for '{_currentProject}'.";
+                var sessLines = new List<string> { $"**Økter for {_currentProject}:**" };
+                foreach (var s in sessions)
+                    sessLines.Add($"  #{s.Id} — {s.Title} ({s.MessageCount} meldinger, {s.CreatedAt})");
+                return string.Join('\n', sessLines);
+
+            default:
+                return null; // Unknown slash command — let LLM handle it
+        }
     }
 
     private static (string action, JsonElement args, string? message) ParseAction(string json)
@@ -139,7 +261,6 @@ public class ChatAgent
         }
         catch
         {
-            // If JSON parsing fails, treat the whole response as a chat message
             return ("chat", default, json.Trim());
         }
     }
@@ -192,5 +313,6 @@ public class ChatAgent
         }
     }
 
-    private record ChatMessage(string Role, string Content);
+    private static string Truncate(string text, int maxLen)
+        => text.Length <= maxLen ? text : text[..(maxLen - 3)] + "...";
 }

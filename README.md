@@ -1,8 +1,12 @@
 # JFToolkit.DevOpsPilot
 
 **Zero-dependency .NET library + CLI for managing Azure DevOps projects
-with local LLM assistance (Ollama). Analyze workflow patterns, manage
+with LLM assistance. Analyze workflow patterns, manage
 work items, and get AI-powered suggestions — all from the terminal.**
+
+Supports **Ollama** (local), **OpenAI**, **DeepSeek**, **Groq**, **xAI**,
+**LM Studio**, and any **OpenAI-compatible endpoint**. Cross-session memory
+with SQLite-backed MemPalace.
 
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Target](https://img.shields.io/badge/targets-.NET%208%20%7C%20.NET%209%20%7C%20.NET%2010-512bd4)]()
@@ -93,11 +97,51 @@ Console.WriteLine(suggestions);
 
 ## Default LLM
 
-**qwen2.5:7b** — ~4 GB RAM, runs on any office laptop. Good at text
+**qwen2.5:7b** (Ollama) — ~4 GB RAM, runs on any office laptop. Good at text
 analysis and structured JSON output.
 
-To use a different model: `devops-pilot setup` and change the model name,
+To use a different model or provider: `devops-pilot setup` and follow the prompts,
 or edit `~/.jftoolkit/config.json`.
+
+```json
+{
+  "LlmProvider": "openai",
+  "OpenAiKey": "sk-...",
+  "OpenAiModel": "gpt-4o-mini"
+}
+```
+
+Supported providers: `ollama`, `openai`, `deepseek`, `groq`, `xai`, `lmstudio`, `custom`.
+
+## Cross-session memory (MemPalace)
+
+Chat sessions and project facts are persisted in `~/.jftoolkit/mempalace.db`
+using SQLite with FTS5 full-text search.
+
+### Chat commands
+
+In `devops-pilot chat <project>`:
+
+```
+> /memory           Show all saved facts about this project
+> /remember CI uses GitHub Actions
+> /forget CI        Delete a fact
+> /history 20       Show last 20 messages from past sessions
+> /sessions         List past chat sessions for this project
+```
+
+### CLI commands
+
+```bash
+devops-pilot memory MyProject             # Show saved facts
+devops-pilot remember MyProject CI "GitHub Actions"  # Save a fact
+devops-pilot forget MyProject CI          # Delete a fact
+devops-pilot sessions MyProject           # List past chat sessions
+devops-pilot recall "deployment error"    # Full-text search in chat history
+```
+
+The agent automatically loads relevant project memory when starting a chat
+session, and recalls conversations from past sessions.
 
 ## What it does NOT do (by design)
 
@@ -110,7 +154,7 @@ or edit `~/.jftoolkit/config.json`.
 
 - .NET 8, .NET 9, or .NET 10
 - Azure DevOps organization with PAT (Work Items: Read & Write)
-- Ollama (optional — only needed for `scan` and `suggest`)
+- LLM provider (Ollama, OpenAI, DeepSeek, Groq, xAI, or LM Studio)
 
 ## License
 

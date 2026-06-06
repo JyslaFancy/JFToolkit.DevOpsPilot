@@ -1,5 +1,6 @@
 using JFToolkit.DevOpsPilot;
 using JFToolkit.DevOpsPilot.Chat;
+using JFToolkit.DevOpsPilot.Memory;
 using JFToolkit.DevOpsPilot.Models;
 using JFToolkit.DevOpsPilot.Services;
 
@@ -75,6 +76,91 @@ try
             Console.WriteLine(await DevOpsPilot.Create().SuggestAsync(args[1]));
             break;
 
+        case "memory":
+        case "mem":
+            Require(args, 1, "devops-pilot memory <project>");
+            using (var mp = new MemPalace())
+            {
+                var mems = mp.GetAllMemories(args[1]);
+                if (mems.Count == 0)
+                {
+                    Console.WriteLine($"No memories stored for '{args[1]}'.");
+                    Console.WriteLine("Use 'devops-pilot remember <project> <key> <value>' to store facts.");
+                }
+                else
+                {
+                    Console.WriteLine($"=== Memories for {args[1]} ===\n");
+                    foreach (var (k, v) in mems)
+                        Console.WriteLine($"  {k}: {v}");
+                }
+            }
+            break;
+
+        case "remember":
+        case "rem":
+            Require(args, 3, "devops-pilot remember <project> <key> <value>");
+            using (var mp2 = new MemPalace())
+            {
+                var val = string.Join(" ", args.Skip(3));
+                mp2.Remember(args[1], args[2], val);
+                Console.WriteLine($"✓ Remembered: {args[2]} = {val}");
+            }
+            break;
+
+        case "forget":
+            Require(args, 2, "devops-pilot forget <project> <key>");
+            using (var mp3 = new MemPalace())
+            {
+                mp3.Forget(args[1], args[2]);
+                Console.WriteLine($"✓ Forgotten: {args[2]}");
+            }
+            break;
+
+        case "sessions":
+            Require(args, 1, "devops-pilot sessions <project>");
+            using (var mp4 = new MemPalace())
+            {
+                var sessions = mp4.ListSessions(args[1]);
+                if (sessions.Count == 0)
+                {
+                    Console.WriteLine($"No sessions for '{args[1]}'.");
+                }
+                else
+                {
+                    Console.WriteLine($"=== Sessions for {args[1]} ===\n");
+                    foreach (var s in sessions)
+                        Console.WriteLine($"  #{s.Id}  {s.CreatedAt}  {s.MessageCount} msgs  {s.Title}");
+                }
+            }
+            break;
+
+        case "recall":
+        case "search":
+            Require(args, 1, "devops-pilot recall <query>");
+            using (var mp5 = new MemPalace())
+            {
+                var query = string.Join(" ", args.Skip(1));
+                Console.WriteLine($"Searching: \"{query}\"\n");
+                var hits = mp5.SearchMessages(query);
+                if (hits.Count == 0)
+                {
+                    Console.WriteLine("No matches found.");
+                }
+                else
+                {
+                    foreach (var h in hits)
+                    {
+                        var preview = h.Content.Length > 100
+                            ? h.Content[..97] + "..."
+                            : h.Content;
+                        Console.WriteLine($"  [{h.Role}] {h.Project} ({h.SessionTitle}):");
+                        Console.WriteLine($"    {preview}");
+                        Console.WriteLine();
+                    }
+                }
+            }
+            break;
+
         case "chat":
             await RunChatAsync(args);
             break;
@@ -129,8 +215,14 @@ static void PrintUsage()
     Console.WriteLine("  devops-pilot suggest <project>            LLM suggests what to work on");
     Console.WriteLine("  devops-pilot chat [project]               Interactive AI chat about your tasks");
     Console.WriteLine();
+    Console.WriteLine("  devops-pilot memory <project>             Show saved project memories");
+    Console.WriteLine("  devops-pilot remember <p> <key> <value>   Save a fact about a project");
+    Console.WriteLine("  devops-pilot forget <project> <key>       Delete a saved fact");
+    Console.WriteLine("  devops-pilot sessions <project>           List past chat sessions");
+    Console.WriteLine("  devops-pilot recall <query>               Search past chat messages");
+    Console.WriteLine();
     Console.WriteLine("Install: dotnet tool install -g JFToolkit.DevOpsPilot");
-    Console.WriteLine("Requires: Ollama (optional, for scan/suggest/chat), Azure DevOps PAT");
+    Console.WriteLine("Requires: Azure DevOps PAT. LLM (Ollama/OpenAI/DeepSeek/Groq/xAI/LM Studio)");
 }
 
 static void Require(string[] a, int idx, string usage)
@@ -187,16 +279,15 @@ static async Task RunChatAsync(string[] args)
     var available = await pilot.IsLlmAvailableAsync();
     if (!available)
     {
-        Console.WriteLine("Ollama is not running. Start it with 'ollama serve' and try again.");
+        Console.WriteLine("LLM is not available. Check your configuration and try again.");
         return;
     }
 
     var config = JFToolkit.DevOpsPilot.Config.JftkConfig.Load();
-    var llm = new JFToolkit.DevOpsPilot.Services.OllamaProvider(
-        config.OllamaModel ?? "qwen2.5:7b",
-        config.OllamaUrl ?? "http://localhost:11434");
+    var llm = LlmProviderFactory.Create(config);
 
-    var agent = new ChatAgent(llm, pilot);
+    using var mem = new MemPalace();
+    var agent = new ChatAgent(llm, pilot, mem);
 
     var project = args.ElementAtOrDefault(1);
     if (project != null)

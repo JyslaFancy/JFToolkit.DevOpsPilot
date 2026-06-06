@@ -11,6 +11,7 @@ public sealed class JftkConfig
     public string? OllamaUrl { get; set; } = "http://localhost:11434";
     public string? OpenAiKey { get; set; }
     public string? OpenAiModel { get; set; }
+    public string? OpenAiBaseUrl { get; set; }
 
     private static readonly string ConfigDir =
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".jftoolkit");
