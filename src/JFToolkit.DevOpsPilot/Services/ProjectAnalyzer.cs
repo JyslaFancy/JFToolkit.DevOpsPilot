@@ -32,12 +32,16 @@ public class ProjectAnalyzer
             summary.AppendLine($"  #{wi.Id} [{wi.Type}] {wi.State}: {wi.Title}");
 
         var llmResponse = await _llm.CompleteAsync(
-            "You are a DevOps analyst. Return ONLY valid JSON with: workflowType (Agile Scrum/Kanban/Basic/Custom), sprintLengthDays (int), recommendations (string array). No markdown.",
+            "You are a DevOps analyst. You MUST respond with ONLY a raw JSON object — no markdown, no code fences, no explanation. " +
+            "The JSON object must have exactly these fields: workflowType (one of: Agile Scrum, Kanban, Basic, Custom), sprintLengthDays (integer 7-30), recommendations (array of 2-5 short strings in Norwegian).",
             summary.ToString());
+
+        // Strip markdown code fences if model wrapped the response
+        var cleaned = StripMarkdownJson(llmResponse);
 
         try
         {
-            using var doc = JsonDocument.Parse(llmResponse);
+            using var doc = JsonDocument.Parse(cleaned);
             var root = doc.RootElement;
             int bugs = 0, tasks = 0, stories = 0;
             string? iter = null;
@@ -60,9 +64,46 @@ public class ProjectAnalyzer
                 CurrentIteration = iter, Recommendations = recs, RawAnalysis = llmResponse
             };
         }
-        catch
+        catch (JsonException jex)
         {
-            return new AnalysisReport { WorkflowType = project.ProcessTemplate ?? "Unknown", ActiveWorkItemCount = workItems.Count, RawAnalysis = llmResponse };
+            return new AnalysisReport
+            {
+                WorkflowType = project.ProcessTemplate ?? "Unknown",
+                ActiveWorkItemCount = workItems.Count,
+                RawAnalysis = llmResponse,
+                Recommendations = [$"LLM JSON parsing failed: {jex.Message[..Math.Min(jex.Message.Length, 100)]}. Raw: {Trunc(llmResponse, 200)}"]
+            };
+        }
+        catch (Exception ex)
+        {
+            return new AnalysisReport
+            {
+                WorkflowType = project.ProcessTemplate ?? "Unknown",
+                ActiveWorkItemCount = workItems.Count,
+                RawAnalysis = llmResponse,
+                Recommendations = [$"Analysis failed: {ex.Message}"]
+            };
         }
     }
+
+    /// <summary>
+    /// Strip markdown code fences (```json ... ```) from LLM responses.
+    /// Many models wrap JSON in code blocks even when told not to.
+    /// </summary>
+    private static string StripMarkdownJson(string text)
+    {
+        var t = text.Trim();
+        // Strip leading ```json or ``` fences
+        if (t.StartsWith("```"))
+        {
+            var end = t.IndexOf('\n');
+            if (end > 0) t = t[(end + 1)..];
+        }
+        // Strip trailing ``` fences
+        if (t.EndsWith("```"))
+            t = t[..^3].TrimEnd();
+        return t.Trim();
+    }
+
+    private static string Trunc(string s, int max) => s.Length <= max ? s : s[..max] + "...";
 }

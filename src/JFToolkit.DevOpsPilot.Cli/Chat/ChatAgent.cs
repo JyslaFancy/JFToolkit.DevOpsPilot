@@ -252,7 +252,17 @@ public class ChatAgent
     {
         try
         {
-            using var doc = JsonDocument.Parse(json);
+            // Strip markdown code fences if present
+            var t = json.Trim();
+            if (t.StartsWith("```"))
+            {
+                var end = t.IndexOf('\n');
+                if (end > 0) t = t[(end + 1)..];
+            }
+            if (t.EndsWith("```"))
+                t = t[..^3].TrimEnd();
+
+            using var doc = JsonDocument.Parse(t);
             var root = doc.RootElement;
             var action = root.TryGetProperty("action", out var a) ? a.GetString() ?? "chat" : "chat";
             var args = root.TryGetProperty("args", out var ar) ? ar.Clone() : default;
