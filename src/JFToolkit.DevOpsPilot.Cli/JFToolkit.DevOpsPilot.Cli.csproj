@@ -12,13 +12,12 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>devops-pilot</ToolCommandName>
     <PackageId>JFToolkit.DevOpsPilot</PackageId>
-    <Version>0.3.2</Version>
+    <Version>0.3.3</Version>
     <Authors>Harald Daltveit</Authors>
     <Description>
-      CLI tool for managing Azure DevOps projects with local LLM (Ollama).
-      Analyze workflows, manage work items, get AI suggestions — from terminal.
+      CLI tool for Azure DevOps / TFS — manage projects, work items, and get AI suggestions from terminal. Supports cloud, on-prem, and local LLMs (Ollama).
     </Description>
-    <PackageTags>azure-devops;llm;ollama;devops;work-items;cli;dotnet-tool</PackageTags>
+    <PackageTags>azure-devops;tfs;on-prem;devops-server;llm;ollama;devops;work-items;cli;dotnet-tool</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
