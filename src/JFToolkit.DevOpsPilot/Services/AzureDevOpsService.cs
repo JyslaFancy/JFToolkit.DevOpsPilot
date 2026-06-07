@@ -8,11 +8,19 @@ namespace JFToolkit.DevOpsPilot.Services;
 public class AzureDevOpsService
 {
     private readonly HttpClient _http;
-    private readonly string _org;
+    private readonly string _baseUrl;
+    private readonly string _apiVersion;
 
-    public AzureDevOpsService(string organization, string pat)
+    /// <summary>
+    /// Creates an Azure DevOps / TFS service client.
+    /// </summary>
+    /// <param name="baseUrl">Base URL, e.g. https://dev.azure.com/myorg or https://tfs.company.com/tfs/DefaultCollection</param>
+    /// <param name="pat">Personal Access Token</param>
+    /// <param name="apiVersion">REST API version (default 7.1)</param>
+    public AzureDevOpsService(string baseUrl, string pat, string apiVersion = "7.1")
     {
-        _org = organization;
+        _baseUrl = baseUrl.TrimEnd('/');
+        _apiVersion = apiVersion;
         _http = new HttpClient();
         var bytes = Encoding.UTF8.GetBytes($":{pat}");
         _http.DefaultRequestHeaders.Authorization =
@@ -23,7 +31,7 @@ public class AzureDevOpsService
 
     public async Task<List<DevOpsProject>> GetProjectsAsync()
     {
-        var url = $"https://dev.azure.com/{_org}/_apis/projects?api-version=7.1";
+        var url = $"{_baseUrl}/_apis/projects?api-version={_apiVersion}";
         var json = await GetAsync(url);
         var items = json.GetProperty("value");
         var projects = new List<DevOpsProject>();
@@ -31,7 +39,7 @@ public class AzureDevOpsService
         {
             projects.Add(new DevOpsProject
             {
-                Organization = _org,
+                Organization = _baseUrl,
                 Name = item.GetProperty("name").GetString() ?? "",
                 Description = item.SafeGetString("description")
             });
@@ -41,7 +49,7 @@ public class AzureDevOpsService
 
     public async Task<DevOpsProject?> GetProjectAsync(string project)
     {
-        var url = $"https://dev.azure.com/{_org}/_apis/projects/{Uri.EscapeDataString(project)}?includeCapabilities=true&api-version=7.1";
+        var url = $"{_baseUrl}/_apis/projects/{Uri.EscapeDataString(project)}?includeCapabilities=true&api-version={_apiVersion}";
         var json = await GetAsync(url);
         var name = json.GetProperty("name").GetString() ?? "";
         var desc = json.SafeGetString("description");
@@ -50,12 +58,12 @@ public class AzureDevOpsService
             if (caps.TryGetProperty("processTemplate", out var pt))
                 processTemplate = pt.GetProperty("templateName").GetString();
         var types = await GetWorkItemTypesAsync(project);
-        return new DevOpsProject { Organization = _org, Name = name, Description = desc, ProcessTemplate = processTemplate, WorkItemTypes = types };
+        return new DevOpsProject { Organization = _baseUrl, Name = name, Description = desc, ProcessTemplate = processTemplate, WorkItemTypes = types };
     }
 
     public async Task<List<WorkItemType>> GetWorkItemTypesAsync(string project)
     {
-        var url = $"https://dev.azure.com/{_org}/{Uri.EscapeDataString(project)}/_apis/wit/workitemtypes?api-version=7.1";
+        var url = $"{_baseUrl}/{Uri.EscapeDataString(project)}/_apis/wit/workitemtypes?api-version={_apiVersion}";
         var json = await GetAsync(url);
         var types = new List<WorkItemType>();
         foreach (var item in json.GetProperty("value").EnumerateArray())
@@ -65,7 +73,7 @@ public class AzureDevOpsService
 
     internal async Task<List<WorkItemRef>> QueryAsync(string project, string wiql)
     {
-        var url = $"https://dev.azure.com/{_org}/{Uri.EscapeDataString(project)}/_apis/wit/wiql?api-version=7.1";
+        var url = $"{_baseUrl}/{Uri.EscapeDataString(project)}/_apis/wit/wiql?api-version={_apiVersion}";
         var body = JsonSerializer.Serialize(new { query = wiql });
         var json = await PostAsync(url, body);
         var refs = new List<WorkItemRef>();
@@ -78,7 +86,7 @@ public class AzureDevOpsService
     {
         if (ids.Count == 0) return [];
         var idStr = string.Join(",", ids);
-        var url = $"https://dev.azure.com/{_org}/_apis/wit/workitems?ids={idStr}&api-version=7.1&$expand=all";
+        var url = $"{_baseUrl}/_apis/wit/workitems?ids={idStr}&api-version={_apiVersion}&$expand=all";
         var json = await GetAsync(url);
         var items = new List<WorkItem>();
         foreach (var item in json.GetProperty("value").EnumerateArray())
@@ -104,7 +112,7 @@ public class AzureDevOpsService
 
     public async Task<WorkItem> CreateWorkItemAsync(string project, string type, string title, string? description = null, string? iterationPath = null, int? priority = null, List<string>? tags = null)
     {
-        var url = $"https://dev.azure.com/{_org}/{Uri.EscapeDataString(project)}/_apis/wit/workitems/${type}?api-version=7.1";
+        var url = $"{_baseUrl}/{Uri.EscapeDataString(project)}/_apis/wit/workitems/${type}?api-version={_apiVersion}";
         var ops = new List<object> { new { op = "add", path = "/fields/System.Title", value = title } };
         if (description != null) ops.Add(new { op = "add", path = "/fields/System.Description", value = description });
         if (iterationPath != null) ops.Add(new { op = "add", path = "/fields/System.IterationPath", value = iterationPath });
@@ -118,7 +126,7 @@ public class AzureDevOpsService
 
     public async Task<WorkItem> UpdateWorkItemStateAsync(int id, string newState)
     {
-        var url = $"https://dev.azure.com/{_org}/_apis/wit/workitems/{id}?api-version=7.1";
+        var url = $"{_baseUrl}/_apis/wit/workitems/{id}?api-version={_apiVersion}";
         var body = JsonSerializer.Serialize(new[] { new { op = "add", path = "/fields/System.State", value = newState } });
         var json = await PatchAsync(url, body);
         var fields = json.GetProperty("fields");

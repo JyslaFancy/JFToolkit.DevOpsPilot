@@ -22,7 +22,16 @@ try
     switch (cmd)
     {
         case "setup":
-            await DevOpsPilot.SetupAsync();
+            {
+                var setupPat = GetArg(args, "--pat");
+                var setupOrg = GetArg(args, "--org");
+                var setupUrl = GetArg(args, "--url");
+                var setupApiVer = GetArg(args, "--api-version");
+                var setupProv = GetArg(args, "--provider");
+                var setupModel = GetArg(args, "--model");
+                var setupKey = GetArg(args, "--api-key");
+                await DevOpsPilot.SetupAsync(setupPat, setupOrg, setupUrl, setupApiVer, setupProv, setupModel, setupKey);
+            }
             break;
 
         case "scan":
@@ -211,7 +220,7 @@ static void PrintLogo()
    ║/_____/\___/|___/\____/ .___/____/_/           ║
    ║                     /_/                       ║
    ╠═══════════════════════════════════════════════╣
-   ║   Azure DevOps + Lokal AI  •  devops-pilot    ║
+   ║   Azure DevOps / TFS + Lokal AI  •  devops-pilot ║
    ╚═══════════════════════════════════════════════╝
 ");
 }
@@ -219,7 +228,7 @@ static void PrintLogo()
 static void PrintUsage()
 {
     Console.WriteLine("Usage:");
-    Console.WriteLine("  devops-pilot setup");
+    Console.WriteLine("  devops-pilot setup [--url <url>] [--org <org>] [--api-version <v>] [--provider <p>] [--model <m>]");
     Console.WriteLine("  devops-pilot scan <project>              Analyze workflow (Scrum/Kanban/etc.)");
     Console.WriteLine("  devops-pilot list projects                List all projects");
     Console.WriteLine("  devops-pilot list <project> [iteration]   List active work items");
@@ -236,7 +245,11 @@ static void PrintUsage()
     Console.WriteLine("  devops-pilot recall <query>               Search past chat messages");
     Console.WriteLine();
     Console.WriteLine("Install: dotnet tool install -g JFToolkit.DevOpsPilot");
-    Console.WriteLine("Requires: Azure DevOps PAT. LLM (Ollama/OpenAI/DeepSeek/Groq/xAI/LM Studio)");
+    Console.WriteLine("Requires: Azure DevOps / TFS PAT. LLM (Ollama/OpenAI/DeepSeek/Groq/xAI/LM Studio).");
+    Console.WriteLine();
+    Console.WriteLine("Setup examples:");
+    Console.WriteLine("  Cloud:  devops-pilot setup --org myorg --pat xxx");
+    Console.WriteLine("  TFS:    devops-pilot setup --url https://tfs.company.com/tfs/DefaultCollection --pat xxx --api-version 5.0");
 }
 
 static void Require(string[] a, int idx, string usage)
@@ -246,6 +259,14 @@ static void Require(string[] a, int idx, string usage)
         Console.Error.WriteLine($"Usage: {usage}");
         Environment.Exit(1);
     }
+}
+
+static string? GetArg(string[] args, string flag)
+{
+    for (int i = 1; i < args.Length - 1; i++)
+        if (args[i].Equals(flag, StringComparison.OrdinalIgnoreCase))
+            return args[i + 1];
+    return null;
 }
 
 static void PrintReport(AnalysisReport r)

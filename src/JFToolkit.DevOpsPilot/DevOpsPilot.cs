@@ -23,20 +23,57 @@ public class DevOpsPilot
         var c = JftkConfig.Load();
         if (string.IsNullOrWhiteSpace(c.AzureDevOpsPat))
             throw new InvalidOperationException("Azure DevOps PAT not configured. Run Setup first.");
-        if (string.IsNullOrWhiteSpace(c.AzureDevOpsOrg))
-            throw new InvalidOperationException("Azure DevOps organization not configured. Run Setup first.");
-        var ado = new AzureDevOpsService(c.AzureDevOpsOrg, c.AzureDevOpsPat);
+
+        // Determine base URL: explicit URL takes priority, fall back to dev.azure.com/{org}
+        var baseUrl = !string.IsNullOrWhiteSpace(c.AzureDevOpsUrl)
+            ? c.AzureDevOpsUrl
+            : c.AzureDevOpsOrg is not null
+                ? $"https://dev.azure.com/{c.AzureDevOpsOrg}"
+                : throw new InvalidOperationException("Azure DevOps organization or URL not configured. Run Setup first.");
+
+        var apiVersion = c.AzureDevOpsApiVersion ?? "7.1";
+        var ado = new AzureDevOpsService(baseUrl, c.AzureDevOpsPat, apiVersion);
         ILlmProvider llm = LlmProviderFactory.Create(c);
         return new DevOpsPilot(c, ado, llm);
     }
 
-    public static async Task SetupAsync(string? pat = null, string? org = null, string? provider = null, string? model = null, string? apiKey = null)
+    public static async Task SetupAsync(string? pat = null, string? org = null, string? adoUrl = null, string? apiVersion = null, string? provider = null, string? model = null, string? apiKey = null)
     {
         var c = JftkConfig.Load();
         if (pat != null) c.AzureDevOpsPat = pat;
         else if (string.IsNullOrWhiteSpace(c.AzureDevOpsPat)) { Console.Write("Azure DevOps PAT: "); c.AzureDevOpsPat = Console.ReadLine()?.Trim(); }
-        if (org != null) c.AzureDevOpsOrg = org;
-        else if (string.IsNullOrWhiteSpace(c.AzureDevOpsOrg)) { Console.Write("Organization: "); c.AzureDevOpsOrg = Console.ReadLine()?.Trim(); }
+
+        // If URL is explicitly provided, use it (TFS on-prem). Otherwise prompt for org (cloud).
+        if (adoUrl != null)
+        {
+            c.AzureDevOpsUrl = adoUrl;
+        }
+        else if (org != null)
+        {
+            c.AzureDevOpsOrg = org;
+        }
+        else if (string.IsNullOrWhiteSpace(c.AzureDevOpsUrl) && string.IsNullOrWhiteSpace(c.AzureDevOpsOrg))
+        {
+            Console.Write("Azure DevOps org (leave empty for TFS/on-prem URL): ");
+            var input = Console.ReadLine()?.Trim();
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                Console.Write("TFS / Azure DevOps Server URL (e.g. https://tfs.company.com/tfs/DefaultCollection): ");
+                c.AzureDevOpsUrl = Console.ReadLine()?.Trim();
+            }
+            else
+            {
+                c.AzureDevOpsOrg = input;
+            }
+        }
+
+        if (apiVersion != null) c.AzureDevOpsApiVersion = apiVersion;
+        else if (!string.IsNullOrWhiteSpace(c.AzureDevOpsUrl) && string.IsNullOrWhiteSpace(c.AzureDevOpsApiVersion))
+        {
+            Console.Write($"API version [7.1]: ");
+            var v = Console.ReadLine()?.Trim();
+            if (!string.IsNullOrWhiteSpace(v)) c.AzureDevOpsApiVersion = v;
+        }
 
         // LLM provider selection
         if (provider != null) c.LlmProvider = provider;

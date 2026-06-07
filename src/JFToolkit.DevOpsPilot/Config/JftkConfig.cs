@@ -6,6 +6,13 @@ public sealed class JftkConfig
 {
     public string? AzureDevOpsPat { get; set; }
     public string? AzureDevOpsOrg { get; set; }
+    /// <summary>
+    /// Full Azure DevOps / TFS base URL. If set, overrides AzureDevOpsOrg.
+    /// Examples: https://dev.azure.com/myorg, https://tfs.company.com/tfs/DefaultCollection
+    /// </summary>
+    public string? AzureDevOpsUrl { get; set; }
+    /// <summary>REST API version. Defaults to 7.1 for Azure DevOps. Use 5.0/6.0 for older TFS.</summary>
+    public string? AzureDevOpsApiVersion { get; set; } = "7.1";
     public string? LlmProvider { get; set; } = "ollama";
     public string? OllamaModel { get; set; } = "qwen2.5:7b";
     public string? OllamaUrl { get; set; } = "http://localhost:11434";
