@@ -32,8 +32,8 @@ public class ChatAgent
 
         RULES:
         1. When the user asks a question that requires data (status, what to do, etc.),
-           call the appropriate action FIRST, then summarize the results in Norwegian.
-        2. If the user just wants to chat, respond conversationally in Norwegian.
+           call the appropriate action FIRST, then summarize the results in English.
+        2. If the user just wants to chat, respond conversationally in English.
         3. Keep responses concise — 2-4 sentences max unless listing items.
         4. Never make up work item IDs or statuses. Only report what the tool returns.
 
@@ -41,7 +41,7 @@ public class ChatAgent
         {
           "action": "chat" | "scan" | "list" | "mine" | "add" | "done" | "suggest",
           "args": {},
-          "message": "Your natural language response in Norwegian"
+          "message": "Your natural language response in English"
         }
 
         For "add": args = { "type": "Task", "title": "...", "description": "..." }
@@ -127,7 +127,7 @@ public class ChatAgent
                     {1}
 
                     User originally asked: "{2}"
-                    Summarize this result in Norwegian. Be concise.
+                    Summarize this result in English. Be concise.
                     Respond in JSON: {{ "action": "chat", "args": {{}}, "message": "..." }}
                     """, _currentProject, result, userMessage);
                 var summary = await _llm.CompleteAsync(SystemPrompt, summaryPrompt);

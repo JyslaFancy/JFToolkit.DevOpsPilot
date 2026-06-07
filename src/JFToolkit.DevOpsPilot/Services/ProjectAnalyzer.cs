@@ -33,7 +33,7 @@ public class ProjectAnalyzer
 
         var llmResponse = await _llm.CompleteAsync(
             "You are a DevOps analyst. You MUST respond with ONLY a raw JSON object — no markdown, no code fences, no explanation. " +
-            "The JSON object must have exactly these fields: workflowType (one of: Agile Scrum, Kanban, Basic, Custom), sprintLengthDays (integer 7-30), recommendations (array of 2-5 short strings in Norwegian).",
+            "The JSON object must have exactly these fields: workflowType (one of: Agile Scrum, Kanban, Basic, Custom), sprintLengthDays (integer 7-30), recommendations (array of 2-5 short strings).",
             summary.ToString());
 
         // Strip markdown code fences if model wrapped the response
