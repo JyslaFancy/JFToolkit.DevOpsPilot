@@ -5,9 +5,9 @@ using JFToolkit.DevOpsPilot.Services;
 namespace JFToolkit.DevOpsPilot.Chat;
 
 /// <summary>
-/// Interactive chat agent that uses an LLM to understand natural language
-/// and execute Azure DevOps operations via DevOpsPilot.
-/// With MemPalace cross-session memory.
+/// Interactive chat agent — secretary persona that proactively keeps the developer
+/// organized and informed about their Azure DevOps project.
+/// Uses MemPalace for cross-session memory.
 /// </summary>
 public class ChatAgent
 {
@@ -19,38 +19,57 @@ public class ChatAgent
     private int _sessionId;
     private int _seq;
 
-    private const string SystemPrompt = """
-        You are a DevOps assistant with access to an Azure DevOps project.
-        You can perform these actions, but only when the user explicitly requests them:
+    private const string SecretarySystemPrompt = """
+        You are PILOT — a proactive DevOps secretary for an Azure DevOps project.
+        You keep the developer organized, informed, and focused on what matters.
 
-        - scan: Analyze the project workflow and give recommendations
-        - list: Show active work items (optionally filtered by iteration)
-        - mine: Show work items assigned to the current user in a specific iteration
-        - add: Create a new work item (type: Task/Bug/User Story, title, optional description)
-        - done: Close/mark-complete a work item by ID
-        - suggest: Analyze the current state and suggest what to work on next
+        YOUR PERSONALITY:
+        - Warm and professional, like a trusted executive assistant who knows the project
+        - Proactive: you anticipate needs. If you see something worth mentioning, say it.
+          Don't wait to be asked the perfect question.
+        - Context-aware: you remember what was discussed and follow up naturally.
+          "You closed #42 — want to pick up #38 next?"
+        - Efficient: prioritize. Don't dump 20 items — highlight the 3-5 that matter most.
+        - Direct: you take action. The user should never need to know which "command" to use.
+        - Honest: never invent IDs, statuses, or data. Only report what the tools return.
+          If you don't know something, say so.
 
-        RULES:
-        1. When the user asks a question that requires data (status, what to do, etc.),
-           call the appropriate action FIRST, then summarize the results in English.
-        2. If the user just wants to chat, respond conversationally in English.
-        3. Keep responses concise — 2-4 sentences max unless listing items.
-        4. Never make up work item IDs or statuses. Only report what the tool returns.
+        YOUR CAPABILITIES (actions you can take):
+        - scan:   Analyze project workflow, spot bottlenecks, give recommendations
+        - list:   Show active work items (all, or filtered by iteration)
+        - mine:   Show work items assigned to the current user
+        - add:    Create a new work item (Task, Bug, User Story)
+        - done:   Close/complete a work item by ID
+        - suggest: Analyze the board and recommend what to work on next
 
-        You MUST respond in this exact JSON format:
+        BEHAVIOR RULES:
+        1. At session start, you receive a BRIEFING with the user's tasks and project state.
+           Use it to greet them warmly and surface what's important right away.
+        2. When the user asks something that needs data, fetch it SILENTLY — just do it.
+           NEVER say "use the list command" or "you can run scan". You ARE the tool.
+        3. If the user says "what should I do?" or seems unsure, proactively suggest
+           based on priorities, deadlines, and blockers.
+        4. After completing an action (closing a task, creating one), naturally suggest
+           the logical next step.
+        5. Keep responses warm but concise. Use bullet points for lists of 3+ items.
+        6. The user may type in Norwegian — you understand both languages,
+           but always respond in English.
+
+        RESPONSE FORMAT — you MUST respond in this exact JSON:
         {
           "action": "chat" | "scan" | "list" | "mine" | "add" | "done" | "suggest",
           "args": {},
-          "message": "Your natural language response in English"
+          "message": "Your warm, secretary-style response in English"
         }
 
-        For "add": args = { "type": "Task", "title": "...", "description": "..." }
-        For "done": args = { "id": 12345 }
-        For "list": args = { "iteration": "Sprint 12" }  (optional)
-        For "mine": args = { "iteration": "Sprint 12" }
-        For "scan"/"suggest"/"chat": args = {}
+        Action args:
+          "add":     { "type": "Task", "title": "...", "description": "..." }
+          "done":    { "id": 12345 }
+          "list":    { "iteration": "Sprint 12" }   (optional)
+          "mine":    { "iteration": "Sprint 12" }
+          "scan" / "suggest" / "chat":  {}
 
-        If no action is needed, use "chat" and provide a helpful message.
+        If no action is needed, use "chat" and be conversational.
         """;
 
     public ChatAgent(ILlmProvider llm, DevOpsPilot pilot, MemPalace mem)
@@ -61,10 +80,10 @@ public class ChatAgent
     }
 
     /// <summary>
-    /// Start a new session for the given project. Loads recent chat history
-    /// and injects project memories into context.
+    /// Start a new session for the given project — fetches a live briefing,
+    /// loads recent chat history, and injects project memories into context.
     /// </summary>
-    public void StartSession(string project)
+    public async Task<string> StartSessionAsync(string project)
     {
         _currentProject = project;
         _sessionId = _mem.CreateSession(project);
@@ -74,13 +93,28 @@ public class ChatAgent
         var recent = _mem.LoadRecentMessages(project, count: 20);
         _history.AddRange(recent);
 
-        // Inject project memory into system prompt context
+        // Inject project memory
         var memoryContext = _mem.BuildMemoryContext(project);
         if (!string.IsNullOrEmpty(memoryContext))
-        {
-            // Prepend memory context as a system message
             _history.Insert(0, new ChatMessage("system", memoryContext.TrimEnd()));
+
+        // ── Build live briefing ──
+        string briefing;
+        try
+        {
+            briefing = await BuildBriefingAsync(project);
         }
+        catch
+        {
+            briefing = $"Project '{project}' is active. I'm ready to help — just ask!";
+        }
+
+        // Inject briefing as an invisible system message the LLM SEES as context,
+        // but the user doesn't see as a separate message
+        _history.Add(new ChatMessage("system",
+            $"SESSION BRIEFING (inject naturally into your first greeting):\n{briefing}"));
+
+        return briefing;
     }
 
     /// <summary>Process a user message and return the assistant's response.</summary>
@@ -88,11 +122,10 @@ public class ChatAgent
     {
         _seq++;
 
-        // Handle slash commands
+        // ── Slash commands ──
         var slashResult = HandleSlashCommand(userMessage.Trim());
         if (slashResult != null)
         {
-            // Save both the command (as user) and response
             _mem.SaveMessage(_sessionId, _seq, "user", userMessage);
             _seq++;
             _mem.SaveMessage(_sessionId, _seq, "assistant", slashResult);
@@ -110,38 +143,45 @@ public class ChatAgent
 
         var userPrompt = $"{projectContext}User message: {userMessage}";
 
-        // First call: LLM decides what action to take
-        var llmResponse = await _llm.CompleteAsync(SystemPrompt, userPrompt);
+        // ── First LLM call: decide action ──
+        var llmResponse = await _llm.CompleteAsync(SecretarySystemPrompt, userPrompt);
         var action = ParseAction(llmResponse);
-        var message = action.message ?? "Beklager, jeg forstod ikke helt. Kan du omformulere?";
+        var message = action.message ?? "I'm sorry, I didn't quite catch that. Could you rephrase?";
 
-        // If action requires data, execute it and feed results back
+        // ── Execute action if needed ──
         if (action.action != "chat" && !string.IsNullOrEmpty(_currentProject))
         {
             try
             {
                 var result = await ExecuteActionAsync(action.action, action.args);
-                // Feed result back to LLM for a natural summary
-                var summaryPrompt = string.Format("""
-                    Previous action result for project '{0}':
-                    {1}
 
-                    User originally asked: "{2}"
-                    Summarize this result in English. Be concise.
-                    Respond in JSON: {{ "action": "chat", "args": {{}}, "message": "..." }}
-                    """, _currentProject, result, userMessage);
-                var summary = await _llm.CompleteAsync(SystemPrompt, summaryPrompt);
+                // Feed results back to LLM for a polished secretary-style summary
+                var summaryPrompt = $"""
+                    Previous action ({action.action}) result for project '{_currentProject}':
+                    {result}
+
+                    User originally asked: "{userMessage}"
+
+                    Summarize this naturally in your secretary voice.
+                    Prioritize — highlight what's urgent, what's blocked, what's next.
+                    Be warm and proactive. Suggest a logical next step if appropriate.
+
+                    Respond in JSON: {"{"} "action": "chat", "args": {"{"}{"}"}, "message": "..." {"}"}
+                    """;
+
+                var summary = await _llm.CompleteAsync(SecretarySystemPrompt, summaryPrompt);
                 var summaryAction = ParseAction(summary);
                 message = summaryAction.message ?? message;
             }
             catch (Exception ex)
             {
-                message = $"Feil: {ex.Message}";
+                message = $"I ran into an issue: {ex.Message}. Let me know if you want me to try again.";
             }
         }
         else if (action.action != "chat")
         {
-            message = "Du må først velge et prosjekt. Si for eksempel 'analyser MyProject'.";
+            message = "I'd love to help with that, but I need to know which project first. " +
+                      "Just tell me the project name — for example 'analyze MyProject'.";
         }
 
         _seq++;
@@ -154,7 +194,7 @@ public class ChatAgent
     public string? DetectProject(string userMessage)
     {
         var lower = userMessage.ToLowerInvariant();
-        var patterns = new[] { "analyser ", "scan ", "list ", "prosjekt ", "project " };
+        var patterns = new[] { "analyser ", "analyze ", "scan ", "list ", "prosjekt ", "project " };
         foreach (var p in patterns)
         {
             var idx = lower.IndexOf(p, StringComparison.Ordinal);
@@ -165,8 +205,6 @@ public class ChatAgent
                 if (word.Length > 0)
                 {
                     _currentProject = word;
-                    if (_sessionId == 0)
-                        StartSession(word);
                     return word;
                 }
             }
@@ -174,10 +212,77 @@ public class ChatAgent
         return null;
     }
 
-    /// <summary>
-    /// Handle built-in slash commands for memory management.
-    /// Returns the response string, or null if not a slash command.
-    /// </summary>
+    public bool HasSession => _sessionId != 0;
+
+    // ── Private helpers ──
+
+    /// <summary>Fetch both user tasks and project overview for the session briefing.</summary>
+    private async Task<string> BuildBriefingAsync(string project)
+    {
+        var lines = new List<string>();
+
+        // 1. Get user's tasks (mine)
+        try
+        {
+            // Try to find current iteration from active items
+            var allItems = await _pilot.ListTasksAsync(project);
+            var iteration = allItems
+                .Where(i => i.IterationPath != null)
+                .GroupBy(i => i.IterationPath)
+                .OrderByDescending(g => g.Count())
+                .FirstOrDefault()?.Key;
+
+            if (iteration != null)
+            {
+                var myItems = await _pilot.ListMyTasksAsync(project, iteration);
+                if (myItems.Count > 0)
+                {
+                    lines.Add($"YOUR TASKS in '{iteration}':");
+                    foreach (var i in myItems)
+                        lines.Add($"  #{i.Id} [{i.State}] {i.Type}: {i.Title}");
+                }
+                else
+                {
+                    lines.Add($"You have no tasks assigned in '{iteration}'.");
+                }
+            }
+        }
+        catch { /* briefing is best-effort */ }
+
+        // 2. Quick project overview (active items, top priorities)
+        try
+        {
+            var active = await _pilot.ListTasksAsync(project);
+            if (active.Count > 0)
+            {
+                var bugs = active.Count(i => i.Type == "Bug");
+                var tasks = active.Count(i => i.Type == "Task");
+                var stories = active.Count(i => i.Type is "User Story" or "Product Backlog Item");
+                lines.Add($"PROJECT OVERVIEW: {active.Count} active items ({bugs} bugs, {tasks} tasks, {stories} stories)");
+
+                // Show a few highest-priority or interesting items
+                var highlights = active
+                    .Where(i => i.Priority <= 2 || i.State is "In Progress" or "Active")
+                    .Take(5).ToList();
+                if (highlights.Count > 0)
+                {
+                    lines.Add("Notable items:");
+                    foreach (var i in highlights)
+                        lines.Add($"  #{i.Id} [{i.State}] {i.Type}: {i.Title}" +
+                                  (i.AssignedTo != null ? $" → {i.AssignedTo}" : ""));
+                }
+            }
+            else
+            {
+                lines.Add("PROJECT OVERVIEW: No active work items. A clean slate!");
+            }
+        }
+        catch { /* best-effort */ }
+
+        return string.Join('\n', lines);
+    }
+
+    /// <summary>Handle built-in slash commands for memory management.</summary>
     private string? HandleSlashCommand(string input)
     {
         if (!input.StartsWith('/')) return null;
@@ -188,7 +293,7 @@ public class ChatAgent
         var rest = parts.Length > 1 ? parts[1] : "";
 
         if (string.IsNullOrEmpty(_currentProject))
-            return "Du må først velge et prosjekt for å bruke minne-kommandoer.";
+            return "I need a project first. Say something like 'analyze MyProject' and I'll get us set up.";
 
         switch (cmd)
         {
@@ -196,8 +301,8 @@ public class ChatAgent
             case "mem":
                 var mems = _mem.GetAllMemories(_currentProject);
                 if (mems.Count == 0)
-                    return $"Ingen lagrede minner for '{_currentProject}'.\nBruk /remember <nøkkel> <verdi> for å lagre fakta.";
-                var lines = new List<string> { $"**Minner for {_currentProject}:**" };
+                    return $"No saved memories for '{_currentProject}'.\nUse /remember <key> <value> to store useful facts.";
+                var lines = new List<string> { $"**Memories for {_currentProject}:**" };
                 foreach (var (k, v) in mems)
                     lines.Add($"  • **{k}**: {v}");
                 return string.Join('\n', lines);
@@ -207,19 +312,19 @@ public class ChatAgent
                 var eqIdx = rest.IndexOf('=');
                 if (eqIdx < 0) { eqIdx = rest.IndexOf(' '); }
                 if (eqIdx < 0)
-                    return "Bruk: /remember <nøkkel> <verdi>\nEksempel: /remember CI bruker GitHub Actions";
+                    return "Use: /remember <key> <value>\nExample: /remember CI uses GitHub Actions";
                 var key = rest[..eqIdx].Trim();
                 var val = rest[(eqIdx + 1)..].Trim();
                 if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(val))
-                    return "Både nøkkel og verdi må oppgis.";
+                    return "Both key and value are required.";
                 _mem.Remember(_currentProject, key, val);
-                return $"✓ Husker: **{key}** = {val}";
+                return $"✓ Got it: **{key}** = {val}";
 
             case "forget":
                 if (string.IsNullOrWhiteSpace(rest))
-                    return "Bruk: /forget <nøkkel>";
+                    return "Use: /forget <key>";
                 _mem.Forget(_currentProject, rest.Trim());
-                return $"✓ Glemt: **{rest.Trim()}**";
+                return $"✓ Forgotten: **{rest.Trim()}**";
 
             case "history":
             case "hist":
@@ -228,8 +333,8 @@ public class ChatAgent
                     count = n;
                 var recent = _mem.LoadRecentMessages(_currentProject, count);
                 if (recent.Count == 0)
-                    return "Ingen tidligere meldinger for dette prosjektet.";
-                var histLines = new List<string> { $"**Siste {recent.Count} meldinger for {_currentProject}:**" };
+                    return "No previous messages for this project.";
+                var histLines = new List<string> { $"**Last {recent.Count} messages for {_currentProject}:**" };
                 foreach (var m in recent)
                     histLines.Add($"  [{m.Role}] {Truncate(m.Content, 120)}");
                 return string.Join('\n', histLines);
@@ -237,14 +342,14 @@ public class ChatAgent
             case "sessions":
                 var sessions = _mem.ListSessions(_currentProject);
                 if (sessions.Count == 0)
-                    return $"Ingen tidligere økter for '{_currentProject}'.";
-                var sessLines = new List<string> { $"**Økter for {_currentProject}:**" };
+                    return $"No previous sessions for '{_currentProject}'.";
+                var sessLines = new List<string> { $"**Sessions for {_currentProject}:**" };
                 foreach (var s in sessions)
-                    sessLines.Add($"  #{s.Id} — {s.Title} ({s.MessageCount} meldinger, {s.CreatedAt})");
+                    sessLines.Add($"  #{s.Id} — {s.Title} ({s.MessageCount} messages, {s.CreatedAt})");
                 return string.Join('\n', sessLines);
 
             default:
-                return null; // Unknown slash command — let LLM handle it
+                return null;
         }
     }
 
@@ -252,7 +357,6 @@ public class ChatAgent
     {
         try
         {
-            // Strip markdown code fences if present
             var t = json.Trim();
             if (t.StartsWith("```"))
             {
@@ -288,38 +392,42 @@ public class ChatAgent
             case "list":
                 var iter = args.TryGetProperty("iteration", out var it) ? it.GetString() : null;
                 var items = await _pilot.ListTasksAsync(_currentProject, iter);
-                if (items.Count == 0) return "Ingen aktive work items.";
-                var list = items.Select(i => $"#{i.Id} [{i.Type}] {i.State}: {i.Title}" + (i.AssignedTo != null ? $" ({i.AssignedTo})" : ""));
+                if (items.Count == 0) return "No active work items.";
+                var list = items.Select(i =>
+                    $"#{i.Id} [{i.Type}] {i.State}: {i.Title}" +
+                    (i.AssignedTo != null ? $" ({i.AssignedTo})" : "") +
+                    (i.Priority > 0 ? $" P{i.Priority}" : ""));
                 return string.Join("\n", list);
 
             case "mine":
                 var mineIter = args.TryGetProperty("iteration", out var mi) && mi.ValueKind != JsonValueKind.Null
                     ? mi.GetString()! : "";
                 var myItems = await _pilot.ListMyTasksAsync(_currentProject, mineIter);
-                if (myItems.Count == 0) return $"Ingen tasks tilordnet deg i '{mineIter}'.";
-                return string.Join("\n", myItems.Select(i => $"#{i.Id} [{i.Type}] {i.State}: {i.Title}"));
+                if (myItems.Count == 0) return $"No tasks assigned to you in '{mineIter}'.";
+                return string.Join("\n", myItems.Select(i =>
+                    $"#{i.Id} [{i.Type}] {i.State}: {i.Title} P{i.Priority}"));
 
             case "add":
                 var type = args.TryGetProperty("type", out var tp) ? tp.GetString() ?? "Task" : "Task";
                 var title = args.TryGetProperty("title", out var t) ? t.GetString() : null;
-                if (string.IsNullOrWhiteSpace(title)) return "Mangler tittel for ny work item.";
+                if (string.IsNullOrWhiteSpace(title)) return "Missing title for new work item.";
                 var desc = args.TryGetProperty("description", out var d) ? d.GetString() : null;
                 var wi = await _pilot.AddTaskAsync(_currentProject, type, title, desc);
-                return $"Opprettet #{wi.Id} [{wi.Type}] {wi.State}: {wi.Title}";
+                return $"Created #{wi.Id} [{wi.Type}] {wi.State}: {wi.Title}";
 
             case "done":
                 if (args.TryGetProperty("id", out var idEl) && idEl.TryGetInt32(out var id))
                 {
                     var done = await _pilot.UpdateStateAsync(id, "Closed");
-                    return $"#{done.Id} satt til {done.State}.";
+                    return $"#{done.Id} → {done.State}.";
                 }
-                return "Mangler eller ugyldig work item ID.";
+                return "Missing or invalid work item ID.";
 
             case "suggest":
                 return await _pilot.SuggestAsync(_currentProject);
 
             default:
-                return "Ukjent handling.";
+                return "Unknown action.";
         }
     }
 

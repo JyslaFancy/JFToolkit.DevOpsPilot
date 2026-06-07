@@ -323,14 +323,16 @@ static async Task RunChatAsync(string[] args)
     if (project != null)
     {
         agent.DetectProject($"scan {project}");
-        Console.WriteLine($"Prosjekt: {project}");
+        Console.Write($"Fetching your briefing for {project}...");
+        await agent.StartSessionAsync(project);
+        Console.WriteLine(" ready!\n");
     }
     else
     {
-        Console.WriteLine("Prosjekt ikke angitt. Si 'analyser <navn>' i chatten for å velge.");
+        Console.WriteLine("No project specified. Say 'analyze <name>' in chat to get started.\n");
     }
 
-    Console.WriteLine("Skriv /exit for å avslutte.\n");
+    Console.WriteLine("Type /exit to quit.\n");
 
     while (true)
     {
@@ -339,7 +341,14 @@ static async Task RunChatAsync(string[] args)
         if (string.IsNullOrWhiteSpace(input)) continue;
         if (input.Trim() == "/exit") break;
 
-        agent.DetectProject(input);
+        // Detect project from natural language
+        var detected = agent.DetectProject(input);
+        if (detected != null && !agent.HasSession)
+        {
+            Console.Write($"Fetching your briefing for {detected}...");
+            await agent.StartSessionAsync(detected);
+            Console.WriteLine(" ready!\n");
+        }
 
         Console.Write("\n");
         var response = await agent.SendAsync(input);
@@ -347,5 +356,5 @@ static async Task RunChatAsync(string[] args)
         Console.WriteLine();
     }
 
-    Console.WriteLine("Ha det!");
+    Console.WriteLine("Goodbye!");
 }
