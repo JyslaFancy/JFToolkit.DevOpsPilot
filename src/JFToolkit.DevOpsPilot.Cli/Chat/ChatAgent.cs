@@ -120,6 +120,10 @@ public class ChatAgent
     /// <summary>Process a user message and return the assistant's response.</summary>
     public async Task<string> SendAsync(string userMessage)
     {
+        // Guard: never try to save messages without a valid session
+        if (!HasSession)
+            return "I need a project first. Say something like 'analyze MyProject' and I'll get us set up.";
+
         _seq++;
 
         // ── Slash commands ──

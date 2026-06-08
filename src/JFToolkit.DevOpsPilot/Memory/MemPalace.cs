@@ -29,6 +29,10 @@ public sealed class MemPalace : IDisposable
 
         _db = new SqliteConnection(csb.ConnectionString);
         _db.Open();
+
+        // Enable foreign key enforcement (required for REFERENCES to work)
+        Execute("PRAGMA foreign_keys = ON");
+
         InitSchema();
     }
 
@@ -101,6 +105,12 @@ public sealed class MemPalace : IDisposable
         ExecuteInTx(tx, "CREATE INDEX IF NOT EXISTS idx_sessions_project ON sessions(project)");
 
         tx.Commit();
+
+        // Rebuild FTS5 index to fix any stale/corrupt entries
+        // (prevents SQLITE_CONSTRAINT from duplicate rowids in messages_fts)
+        try { Execute("INSERT INTO messages_fts(messages_fts) VALUES('rebuild')"); }
+        catch { /* best-effort — non-critical if FTS is already clean */ }
+
         _initialized = true;
     }
 
@@ -119,6 +129,30 @@ public sealed class MemPalace : IDisposable
     }
 
     public void SaveMessage(int sessionId, int seq, string role, string content)
+    {
+        try
+        {
+            InsertMessage(sessionId, seq, role, content);
+        }
+        catch (SqliteException ex) when (ex.SqliteErrorCode == 19) // SQLITE_CONSTRAINT
+        {
+            // FTS5 index is likely stale — rebuild and retry once
+            try
+            {
+                Execute("INSERT INTO messages_fts(messages_fts) VALUES('rebuild')");
+                InsertMessage(sessionId, seq, role, content);
+            }
+            catch (SqliteException retryEx)
+            {
+                throw new InvalidOperationException(
+                    $"SQLite constraint violation persists after FTS5 rebuild. " +
+                    $"Session={sessionId}, Seq={seq}, Role={role}. " +
+                    $"Inner: {retryEx.Message}", ex);
+            }
+        }
+    }
+
+    private void InsertMessage(int sessionId, int seq, string role, string content)
     {
         using var cmd = new SqliteCommand(
             "INSERT INTO messages (session_id, seq, role, content) VALUES (@s, @q, @r, @c)",
