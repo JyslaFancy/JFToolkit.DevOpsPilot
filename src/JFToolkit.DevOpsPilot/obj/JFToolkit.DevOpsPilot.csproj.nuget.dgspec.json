@@ -58,6 +58,12 @@
         "net10.0": {
           "framework": "net10.0",
           "targetAlias": "net10.0",
+          "dependencies": {
+            "Microsoft.Data.Sqlite": {
+              "target": "Package",
+              "version": "[9.*, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -353,6 +359,12 @@
         "net8.0": {
           "framework": "net8.0",
           "targetAlias": "net8.0",
+          "dependencies": {
+            "Microsoft.Data.Sqlite": {
+              "target": "Package",
+              "version": "[9.*, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
@@ -666,6 +678,12 @@
         "net9.0": {
           "framework": "net9.0",
           "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.Data.Sqlite": {
+              "target": "Package",
+              "version": "[9.*, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",

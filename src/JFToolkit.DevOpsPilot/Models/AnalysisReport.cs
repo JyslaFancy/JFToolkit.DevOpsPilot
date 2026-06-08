@@ -11,4 +11,6 @@ public sealed record AnalysisReport
     public string? CurrentIteration { get; init; }
     public List<string> Recommendations { get; init; } = [];
     public string RawAnalysis { get; init; } = "";
+    public int AreaCount { get; init; }
+    public int TeamCount { get; init; }
 }

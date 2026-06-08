@@ -389,8 +389,11 @@ public class ChatAgent
         {
             case "scan":
                 var report = await _pilot.AnalyzeAsync(_currentProject);
+                var areaTeam = report.AreaCount > 0 || report.TeamCount > 0
+                    ? $" | {report.AreaCount} areas, {report.TeamCount} teams"
+                    : "";
                 return $"Workflow: {report.WorkflowType}, Sprint: {report.SprintLengthDays}d, " +
-                       $"Active: {report.ActiveWorkItemCount} (Bugs:{report.OpenBugs} Tasks:{report.OpenTasks} Stories:{report.OpenUserStories}). " +
+                       $"Active: {report.ActiveWorkItemCount} (Bugs:{report.OpenBugs} Tasks:{report.OpenTasks} Stories:{report.OpenUserStories}){areaTeam}. " +
                        $"Recommendations: {string.Join("; ", report.Recommendations)}";
 
             case "list":

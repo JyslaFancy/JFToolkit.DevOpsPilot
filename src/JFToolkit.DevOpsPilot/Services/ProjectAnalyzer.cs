@@ -28,6 +28,25 @@ public class ProjectAnalyzer
         summary.AppendLine($"Process: {project.ProcessTemplate ?? "Unknown"}");
         summary.AppendLine($"Types: {string.Join(", ", project.WorkItemTypes.Select(t => t.Name))}");
         summary.AppendLine($"Work Items: {workItems.Count}");
+
+        // Include area/team structure for smarter analysis
+        if (project.Areas.Count > 0)
+        {
+            summary.AppendLine("Area Paths:");
+            foreach (var area in project.Areas)
+                summary.AppendLine(FormatAreaTree(area, 1));
+        }
+        if (project.Teams.Count > 0)
+        {
+            summary.AppendLine("Teams:");
+            foreach (var team in project.Teams)
+            {
+                var areas = team.AreaPaths.Count > 0 ? $" (areas: {string.Join(", ", team.AreaPaths)})" : "";
+                var members = team.Members.Count > 0 ? $" [{string.Join(", ", team.Members)}]" : "";
+                summary.AppendLine($"  {team.Name}{areas}{members}");
+            }
+        }
+
         foreach (var wi in workItems.Take(80))
             summary.AppendLine($"  #{wi.Id} [{wi.Type}] {wi.State}: {wi.Title}");
 
@@ -61,7 +80,8 @@ public class ProjectAnalyzer
                 WorkflowType = root.SafeGetString("workflowType") ?? "Unknown",
                 SprintLengthDays = root.TryGetProperty("sprintLengthDays", out var sld) ? sld.GetInt32() : 0,
                 ActiveWorkItemCount = workItems.Count, OpenBugs = bugs, OpenTasks = tasks, OpenUserStories = stories,
-                CurrentIteration = iter, Recommendations = recs, RawAnalysis = llmResponse
+                CurrentIteration = iter, Recommendations = recs, RawAnalysis = llmResponse,
+                AreaCount = project.Areas.Count, TeamCount = project.Teams.Count
             };
         }
         catch (JsonException jex)
@@ -106,4 +126,13 @@ public class ProjectAnalyzer
     }
 
     private static string Trunc(string s, int max) => s.Length <= max ? s : s[..max] + "...";
+
+    private static string FormatAreaTree(AreaNode node, int depth)
+    {
+        var indent = new string(' ', depth * 2);
+        var line = $"{indent}{node.Name}";
+        if (node.Children.Count == 0) return line;
+        var children = string.Join("\n", node.Children.Select(c => FormatAreaTree(c, depth + 1)));
+        return $"{line}\n{children}";
+    }
 }

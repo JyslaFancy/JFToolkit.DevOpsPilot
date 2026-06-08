@@ -58,7 +58,101 @@ public class AzureDevOpsService
             if (caps.TryGetProperty("processTemplate", out var pt))
                 processTemplate = pt.GetProperty("templateName").GetString();
         var types = await GetWorkItemTypesAsync(project);
-        return new DevOpsProject { Organization = _baseUrl, Name = name, Description = desc, ProcessTemplate = processTemplate, WorkItemTypes = types };
+
+        // Fetch areas and teams in parallel (best-effort — older TFS may not support these)
+        var areasTask = GetAreasAsync(project);
+        var teamsTask = GetTeamsAsync(project);
+
+        List<AreaNode> areas;
+        List<TeamInfo> teams;
+        try { areas = await areasTask; } catch { areas = []; }
+        try { teams = await teamsTask; } catch { teams = []; }
+
+        return new DevOpsProject
+        {
+            Organization = _baseUrl, Name = name, Description = desc,
+            ProcessTemplate = processTemplate, WorkItemTypes = types,
+            Areas = areas, Teams = teams
+        };
+    }
+
+    public async Task<List<AreaNode>> GetAreasAsync(string project)
+    {
+        var url = $"{_baseUrl}/{Uri.EscapeDataString(project)}/_apis/wit/classificationnodes/areas?$depth=10&api-version={_apiVersion}";
+        var json = await GetAsync(url);
+        var root = ParseAreaNode(json, "");
+        return root?.Children ?? [];
+    }
+
+    private static AreaNode? ParseAreaNode(JsonElement node, string parentPath)
+    {
+        var name = node.SafeGetString("name");
+        if (name == null) return null;
+        var path = string.IsNullOrEmpty(parentPath) ? name : $"{parentPath}\\{name}";
+        var area = new AreaNode { Name = name, Path = path };
+
+        if (node.TryGetProperty("children", out var children))
+            foreach (var child in children.EnumerateArray())
+            {
+                var childNode = ParseAreaNode(child, path);
+                if (childNode != null)
+                    area.Children.Add(childNode);
+            }
+
+        return area;
+    }
+
+    public async Task<List<TeamInfo>> GetTeamsAsync(string project)
+    {
+        var url = $"{_baseUrl}/_apis/projects/{Uri.EscapeDataString(project)}/teams?api-version={_apiVersion}";
+        var json = await GetAsync(url);
+        var teams = new List<TeamInfo>();
+
+        foreach (var item in json.GetProperty("value").EnumerateArray())
+        {
+            var teamId = item.GetProperty("id").GetString() ?? "";
+            var teamName = item.GetProperty("name").GetString() ?? "";
+            var teamDesc = item.SafeGetString("description");
+
+            // Fetch team members
+            var members = new List<string>();
+            try
+            {
+                var membersUrl = $"{_baseUrl}/_apis/projects/{Uri.EscapeDataString(project)}/teams/{teamId}/members?api-version={_apiVersion}";
+                var membersJson = await GetAsync(membersUrl);
+                foreach (var m in membersJson.GetProperty("value").EnumerateArray())
+                {
+                    var displayName = m.GetProperty("identity").GetProperty("displayName").GetString();
+                    if (displayName != null) members.Add(displayName);
+                }
+            }
+            catch { /* members are best-effort */ }
+
+            // Fetch team area paths (fieldValues)
+            var areaPaths = new List<string>();
+            try
+            {
+                var fieldsUrl = $"{_baseUrl}/{Uri.EscapeDataString(project)}/{teamId}/_apis/work/teamsettings/teamfieldvalues?api-version={_apiVersion}";
+                var fieldsJson = await GetAsync(fieldsUrl);
+                foreach (var f in fieldsJson.GetProperty("values").EnumerateArray())
+                {
+                    var areaPath = f.GetProperty("value").GetString();
+                    if (areaPath != null) areaPaths.Add(areaPath);
+                }
+            }
+            catch { /* area paths are best-effort */ }
+
+            teams.Add(new TeamInfo
+            {
+                Id = teamId,
+                Name = teamName,
+                Description = teamDesc,
+                Members = members,
+                AreaPaths = areaPaths
+            });
+        }
+
+        return teams;
     }
 
     public async Task<List<WorkItemType>> GetWorkItemTypesAsync(string project)

@@ -1,9 +1,15 @@
 {
   "version": 2,
-  "dgSpecHash": "46tjf5/GUdg=",
+  "dgSpecHash": "Ugsm8TcmVS0=",
   "success": true,
   "projectFilePath": "/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/JFToolkit.DevOpsPilot.csproj",
   "expectedPackageFiles": [
+    "/root/.nuget/packages/microsoft.data.sqlite/9.0.16/microsoft.data.sqlite.9.0.16.nupkg.sha512",
+    "/root/.nuget/packages/microsoft.data.sqlite.core/9.0.16/microsoft.data.sqlite.core.9.0.16.nupkg.sha512",
+    "/root/.nuget/packages/sqlitepclraw.bundle_e_sqlite3/2.1.10/sqlitepclraw.bundle_e_sqlite3.2.1.10.nupkg.sha512",
+    "/root/.nuget/packages/sqlitepclraw.core/2.1.10/sqlitepclraw.core.2.1.10.nupkg.sha512",
+    "/root/.nuget/packages/sqlitepclraw.lib.e_sqlite3/2.1.10/sqlitepclraw.lib.e_sqlite3.2.1.10.nupkg.sha512",
+    "/root/.nuget/packages/sqlitepclraw.provider.e_sqlite3/2.1.10/sqlitepclraw.provider.e_sqlite3.2.1.10.nupkg.sha512",
     "/root/.nuget/packages/microsoft.netcore.app.ref/8.0.27/microsoft.netcore.app.ref.8.0.27.nupkg.sha512",
     "/root/.nuget/packages/microsoft.aspnetcore.app.ref/8.0.27/microsoft.aspnetcore.app.ref.8.0.27.nupkg.sha512"
   ],

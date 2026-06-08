@@ -10,3 +10,4 @@
 /tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Release/net10.0/refint/JFToolkit.DevOpsPilot.Core.dll
 /tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Release/net10.0/JFToolkit.DevOpsPilot.Core.pdb
 /tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Release/net10.0/ref/JFToolkit.DevOpsPilot.Core.dll
+/tmp/JFToolkit.DevOpsPilot/src/JFToolkit.DevOpsPilot/obj/Release/net10.0/JFToolkit.DevOpsPilot.csproj.AssemblyReference.cache

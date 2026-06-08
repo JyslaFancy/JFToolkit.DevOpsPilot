@@ -274,6 +274,10 @@ static void PrintReport(AnalysisReport r)
     Console.WriteLine($"    User Stories:  {r.OpenUserStories}");
     if (r.CurrentIteration != null)
         Console.WriteLine($"  Current sprint:  {r.CurrentIteration}");
+    if (r.AreaCount > 0 || r.TeamCount > 0)
+    {
+        Console.WriteLine($"  Areas / Teams:   {r.AreaCount} areas, {r.TeamCount} teams");
+    }
 
     if (r.Recommendations.Count > 0)
     {
