@@ -135,23 +135,57 @@ public class AzureDevOpsService
 
     private async Task<JsonElement> GetAsync(string url)
     {
-        var resp = await _http.GetAsync(url);
-        resp.EnsureSuccessStatusCode();
-        return JsonSerializer.Deserialize<JsonElement>(await resp.Content.ReadAsStringAsync());
+        try
+        {
+            var resp = await _http.GetAsync(url);
+            resp.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<JsonElement>(await resp.Content.ReadAsStringAsync());
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new HttpRequestException(BuildErrorMessage("GET", url, ex), ex);
+        }
     }
 
     private async Task<JsonElement> PostAsync(string url, string body)
     {
-        var resp = await _http.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json"));
-        resp.EnsureSuccessStatusCode();
-        return JsonSerializer.Deserialize<JsonElement>(await resp.Content.ReadAsStringAsync());
+        try
+        {
+            var resp = await _http.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json"));
+            resp.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<JsonElement>(await resp.Content.ReadAsStringAsync());
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new HttpRequestException(BuildErrorMessage("POST", url, ex), ex);
+        }
     }
 
     private async Task<JsonElement> PatchAsync(string url, string body)
     {
-        var resp = await _http.PatchAsync(url, new StringContent(body, Encoding.UTF8, "application/json-patch+json"));
-        resp.EnsureSuccessStatusCode();
-        return JsonSerializer.Deserialize<JsonElement>(await resp.Content.ReadAsStringAsync());
+        try
+        {
+            var resp = await _http.PatchAsync(url, new StringContent(body, Encoding.UTF8, "application/json-patch+json"));
+            resp.EnsureSuccessStatusCode();
+            return JsonSerializer.Deserialize<JsonElement>(await resp.Content.ReadAsStringAsync());
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new HttpRequestException(BuildErrorMessage("PATCH", url, ex), ex);
+        }
+    }
+
+    private static string BuildErrorMessage(string method, string url, HttpRequestException ex)
+    {
+        var statusCode = ex.StatusCode?.ToString() ?? "unknown";
+        var hints = statusCode switch
+        {
+            "NotFound" => " — Check: project name, API version (older TFS may need --api-version 5.0 or 4.0), or if the resource exists",
+            "Unauthorized" => " — Check: PAT is valid and has Read access",
+            "Forbidden" => " — Check: PAT has required scopes (Work Items: Read)",
+            _ => ""
+        };
+        return $"{method} {url} → HTTP {(int?)ex.StatusCode} {statusCode}{hints}";
     }
 }
 
