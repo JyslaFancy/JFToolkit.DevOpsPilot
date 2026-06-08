@@ -198,7 +198,7 @@ public class ChatAgent
     public string? DetectProject(string userMessage)
     {
         var lower = userMessage.ToLowerInvariant();
-        var patterns = new[] { "analyser ", "analyze ", "scan ", "list ", "prosjekt ", "project " };
+        var patterns = new[] { "analyse ", "analyser ", "analyze ", "scan ", "list ", "prosjekt ", "project " };
         foreach (var p in patterns)
         {
             var idx = lower.IndexOf(p, StringComparison.Ordinal);
