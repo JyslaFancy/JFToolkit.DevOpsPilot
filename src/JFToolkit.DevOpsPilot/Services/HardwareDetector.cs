@@ -5,7 +5,8 @@ namespace JFToolkit.DevOpsPilot.Services;
 /// <summary>
 /// Cross-platform hardware detection.
 /// Detects RAM, GPU, CPU cores, disk space, and OS info.
-/// Works on Windows, Linux, and macOS without external dependencies.
+/// Uses PowerShell on Windows, /proc/meminfo on Linux, sysctl on macOS.
+/// All detection is best-effort — fields may be null/fallback if detection fails.
 /// </summary>
 public static class HardwareDetector
 {
@@ -66,7 +67,6 @@ public static class HardwareDetector
         {
             if (OperatingSystem.IsLinux())
             {
-                // Parse /proc/meminfo — works on WSL and native Linux
                 var lines = File.ReadAllLines("/proc/meminfo");
                 long totalKb = 0, availKb = 0;
                 foreach (var line in lines)
@@ -82,22 +82,25 @@ public static class HardwareDetector
 
             if (OperatingSystem.IsMacOS())
             {
-                // sysctl hw.memsize
                 var total = RunAndParse("sysctl", "-n hw.memsize", parseFirstLine: s =>
-                    long.TryParse(s, out var b) ? b / 1024.0 / 1024.0 / 1024.0 : 8.0);
+                    long.TryParse(s, out var b) ? b / 1024.0 / 1024.0 / 1024.0 : 0);
                 if (total > 0)
-                    return (total, total * 0.6); // estimate available
+                    return (total, total * 0.6);
             }
 
             if (OperatingSystem.IsWindows())
             {
-                // Use wmic on Windows
-                var total = RunAndParse("wmic", "computersystem get TotalPhysicalMemory", parseFirstLine: s =>
-                    long.TryParse(s, out var b) ? b / 1024.0 / 1024.0 / 1024.0 : 8.0);
-                var free = RunAndParse("wmic", "OS get FreePhysicalMemory", parseFirstLine: s =>
-                    long.TryParse(s, out var kb) ? kb / 1024.0 / 1024.0 : total * 0.5);
-                if (total > 0)
-                    return (total, free > 0 ? free : total * 0.5);
+                // PowerShell — wmic is deprecated/removed on Windows 11 24H2+
+                var totalBytes = RunAndParse("powershell",
+                    "-NoProfile -Command \"[double](Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory\"",
+                    parseFirstLine: s => double.TryParse(s, out var b) ? b / 1024.0 / 1024.0 / 1024.0 : 0);
+
+                var freeKb = RunAndParse("powershell",
+                    "-NoProfile -Command \"[double](Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory\"",
+                    parseFirstLine: s => double.TryParse(s, out var kb) ? kb / 1024.0 / 1024.0 : 0);
+
+                if (totalBytes > 0)
+                    return (totalBytes, freeKb > 0 ? freeKb : totalBytes * 0.5);
             }
         }
         catch { /* best-effort */ }
@@ -118,20 +121,17 @@ public static class HardwareDetector
                 if (!string.IsNullOrWhiteSpace(out_nv))
                 {
                     var parts = out_nv.Split(',');
-                    if (parts.Length >= 2 &&
-                        double.TryParse(parts[1].Trim(), out var memMiB))
-                    {
+                    if (parts.Length >= 2 && double.TryParse(parts[1].Trim(), out var memMiB))
                         return (parts[0].Trim(), Math.Round(memMiB / 1024.0, 1));
-                    }
                 }
-                // AMD GPU via /sys/class/drm
-                // Fall through to lspci
-                var lspci = RunCommand("lspci", "-v | grep -i vga");
+                // fallback: lspci
+                var lspci = RunCommand("bash", "-c \"lspci | grep -i 'vga\\|3d\\|display' | head -1\"");
                 if (!string.IsNullOrWhiteSpace(lspci))
                 {
-                    var first = lspci.Split('\n').FirstOrDefault()?.Trim();
-                    if (!string.IsNullOrWhiteSpace(first))
-                        return (first, null);
+                    // Extract name after ": "
+                    var colon = lspci.IndexOf(": ");
+                    var gpuName = colon > 0 ? lspci[(colon + 2)..].Trim() : lspci.Trim();
+                    return (gpuName, null);
                 }
             }
 
@@ -140,40 +140,47 @@ public static class HardwareDetector
                 var sp = RunCommand("system_profiler", "SPDisplaysDataType");
                 if (!string.IsNullOrWhiteSpace(sp))
                 {
-                    // Extract GPU name from line like "Chipset Model: Apple M2 Pro"
                     var lines = sp.Split('\n');
-                    string? name = null;
                     foreach (var line in lines)
                     {
                         if (line.Contains("Chipset Model:") || line.Contains("Vendor:"))
                         {
                             var parts = line.Split(':', 2);
-                            if (parts.Length == 2) name = parts[1].Trim();
+                            if (parts.Length == 2) return (parts[1].Trim(), null);
                             break;
                         }
                     }
-                    if (name != null) return (name, null);
                 }
             }
 
             if (OperatingSystem.IsWindows())
             {
-                var wmic = RunCommand("wmic", "path win32_videocontroller get name,adapterram /format:csv");
-                if (!string.IsNullOrWhiteSpace(wmic))
+                // PowerShell — Get-CimInstance Win32_VideoController
+                // Output: Name|AdapterRAM per line, sorted by RAM desc (dedicated GPU first)
+                var psResult = RunCommand("powershell",
+                    "-NoProfile -Command \"Get-CimInstance Win32_VideoController | " +
+                    "Sort-Object AdapterRAM -Descending | " +
+                    "ForEach-Object { $_.Name + '|' + $_.AdapterRAM }\"",
+                    timeoutMs: 10000);
+
+                if (!string.IsNullOrWhiteSpace(psResult))
                 {
-                    var lines = wmic.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                    if (lines.Length > 1)
+                    var lines = psResult.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var line in lines)
                     {
-                        var parts = lines[1].Split(',');
-                        if (parts.Length >= 3)
+                        var parts = line.Trim().Split('|');
+                        if (parts.Length >= 2)
                         {
-                            var name = parts[1].Trim();
+                            var name = parts[0].Trim();
                             double? mem = null;
-                            if (long.TryParse(parts[2].Trim(), out var bytes) && bytes > 0)
+                            if (long.TryParse(parts[1].Trim(), out var bytes) && bytes > 0)
                                 mem = Math.Round(bytes / 1024.0 / 1024.0 / 1024.0, 1);
                             return (name, mem);
                         }
                     }
+                    // If no adapter RAM, at least return the name
+                    if (lines.Length > 0 && !string.IsNullOrWhiteSpace(lines[0]))
+                        return (lines[0].Trim(), null);
                 }
             }
         }
@@ -199,7 +206,6 @@ public static class HardwareDetector
 
         try
         {
-            // Fallback: check root
             var root = OperatingSystem.IsWindows() ? "C:\\" : "/";
             var drive = new DriveInfo(root);
             return Math.Round(drive.AvailableFreeSpace / 1024.0 / 1024.0 / 1024.0, 1);
@@ -217,7 +223,7 @@ public static class HardwareDetector
         return System.Runtime.InteropServices.RuntimeInformation.OSDescription;
     }
 
-    private static string? RunCommand(string file, string args)
+    private static string? RunCommand(string file, string args, int timeoutMs = 5000)
     {
         try
         {
@@ -226,24 +232,24 @@ public static class HardwareDetector
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
             using var proc = Process.Start(psi);
             if (proc == null) return null;
             var output = proc.StandardOutput.ReadToEnd();
-            proc.WaitForExit(5000);
+            proc.WaitForExit(timeoutMs);
             return proc.ExitCode == 0 ? output.Trim() : null;
         }
         catch { return null; }
     }
 
-    private static double RunAndParse(string file, string args, Func<string, double> parseFirstLine)
+    private static double RunAndParse(string file, string args, Func<string, double> parseFirstLine, int timeoutMs = 8000)
     {
-        var output = RunCommand(file, args);
+        var output = RunCommand(file, args, timeoutMs);
         if (string.IsNullOrWhiteSpace(output)) return 0;
         var firstLine = output.Split('\n', StringSplitOptions.RemoveEmptyEntries)
                               .Select(l => l.Trim())
-                              .FirstOrDefault(l => l.Length > 0 && l.Any(char.IsDigit));
+                              .FirstOrDefault(l => l.Length > 0 && l.Any(c => char.IsDigit(c) || c == '.'));
         if (firstLine == null) return 0;
         try { return parseFirstLine(firstLine); }
         catch { return 0; }
