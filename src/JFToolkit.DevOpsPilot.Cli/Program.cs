@@ -4,6 +4,19 @@ using JFToolkit.DevOpsPilot.Memory;
 using JFToolkit.DevOpsPilot.Models;
 using JFToolkit.DevOpsPilot.Services;
 
+// ── .NET runtime version check ──────────────────────────
+var runtimeVersion = Environment.Version;
+if (runtimeVersion.Major < 8)
+{
+    Console.Error.WriteLine(
+        $"DevOpsPilot krever .NET 8 eller nyere. Du har .NET {runtimeVersion.Major}.{runtimeVersion.Minor}.\n" +
+        "Last ned nyeste .NET SDK eller runtime:\n" +
+        "  https://dotnet.microsoft.com/download\n" +
+        "\n" +
+        "Om du nyleg har installert: lukk terminalen og start på nytt.");
+    return 1;
+}
+
 // Start version check in background (non-blocking)
 UpdateChecker.CheckInBackground();
 
