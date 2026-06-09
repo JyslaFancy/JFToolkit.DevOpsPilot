@@ -37,7 +37,11 @@ public class DevOpsPilot
         return new DevOpsPilot(c, ado, llm);
     }
 
-    public static async Task SetupAsync(string? pat = null, string? org = null, string? adoUrl = null, string? apiVersion = null, string? provider = null, string? model = null, string? apiKey = null)
+    public static async Task SetupAsync(
+        string? pat = null, string? org = null, string? adoUrl = null,
+        string? apiVersion = null, string? provider = null,
+        string? model = null, string? apiKey = null,
+        bool autoModel = false)
     {
         var c = JftkConfig.Load();
         if (pat != null) c.AzureDevOpsPat = pat;
@@ -119,24 +123,104 @@ public class DevOpsPilot
         }
         else
         {
-            // Ollama / LM Studio
-            if (model != null) c.OllamaModel = model;
-            else if (string.IsNullOrWhiteSpace(c.OllamaModel))
-            {
-                Console.Write($"Ollama model [{c.OllamaModel ?? "qwen2.5:7b"}]: ");
-                var m = Console.ReadLine()?.Trim();
-                if (!string.IsNullOrWhiteSpace(m)) c.OllamaModel = m;
-            }
+            // ─── Ollama / local LLM ──────────────────────
             if (!OllamaSetup.IsInstalled())
-                Console.WriteLine($"Ollama not installed. Install: {OllamaSetup.GetInstallInstructions()}");
-            else if (!OllamaSetup.HasModel(c.OllamaModel!))
             {
-                Console.WriteLine($"Pulling {c.OllamaModel}...");
-                Console.WriteLine(await OllamaSetup.PullModelAsync(c.OllamaModel!) ? "OK" : "Failed");
+                Console.WriteLine($"Ollama not installed. Install: {OllamaSetup.GetInstallInstructions()}");
+                Console.WriteLine("Install Ollama first, then re-run setup.");
+                c.LlmProvider = "ollama";
+                c.Save();
+                Console.WriteLine("Partial config saved (Ollama setup pending).");
+                return;
+            }
+
+            // Hardware detection + model recommendation
+            var hw = HardwareDetector.Detect();
+            Console.WriteLine();
+            Console.WriteLine("  ── System hardware ──");
+            Console.WriteLine($"  {hw}");
+
+            if (autoModel && model == null)
+            {
+                // Auto-pick the best model
+                var best = ModelRecommender.GetRecommendations(hw).First();
+                c.OllamaModel = best.Model;
+                Console.WriteLine();
+                Console.WriteLine($"  Auto-selected model: {best.Model}");
+                Console.WriteLine($"  Reason: {best.Reason}");
+            }
+            else if (model != null)
+            {
+                c.OllamaModel = model;
+            }
+            else
+            {
+                // Show recommendations and let user choose
+                var localModels = OllamaSetup.ListLocalModels();
+                var recommendations = ModelRecommender.GetRecommendations(hw);
+
+                Console.WriteLine();
+                Console.WriteLine("  ── Recommended models for your hardware ──");
+
+                int idx = 1;
+                var shown = new HashSet<string>();
+                foreach (var rec in recommendations)
+                {
+                    if (shown.Add(rec.Model))
+                    {
+                        var alreadyPulled = localModels.Contains(rec.Model, StringComparer.OrdinalIgnoreCase)
+                            ? " [already downloaded]"
+                            : "";
+                        Console.WriteLine($"  [{idx}] {rec.Model,-20} — {rec.Reason}{alreadyPulled}");
+                        idx++;
+                    }
+                }
+
+                // Show any locally pulled models not in recommendations
+                foreach (var lm in localModels)
+                {
+                    if (!shown.Contains(lm, StringComparer.OrdinalIgnoreCase))
+                    {
+                        Console.WriteLine($"  [{idx}] {lm,-20} — already downloaded");
+                        shown.Add(lm);
+                        idx++;
+                    }
+                }
+
+                Console.WriteLine();
+                Console.Write($"  Choose model number, or type a model name [{c.OllamaModel ?? "qwen2.5:7b"}]: ");
+                var choice = Console.ReadLine()?.Trim();
+
+                if (!string.IsNullOrWhiteSpace(choice))
+                {
+                    // Try to parse as number first
+                    if (int.TryParse(choice, out var num) && num >= 1 && num <= shown.Count)
+                    {
+                        c.OllamaModel = shown.ElementAt(num - 1);
+                    }
+                    else
+                    {
+                        c.OllamaModel = choice; // custom model name
+                    }
+                }
+            }
+
+            // Pull model if missing
+            if (!OllamaSetup.HasModel(c.OllamaModel!))
+            {
+                Console.WriteLine();
+                Console.WriteLine($"  Pulling {c.OllamaModel}...");
+                var success = await OllamaSetup.PullModelAsync(c.OllamaModel!);
+                Console.WriteLine(success ? $"  ✓ {c.OllamaModel} ready!" : $"  ✗ Failed to pull {c.OllamaModel}. Pull manually with 'ollama pull {c.OllamaModel}'.");
+            }
+            else
+            {
+                Console.WriteLine($"  ✓ {c.OllamaModel} is already available.");
             }
         }
 
         c.Save();
+        Console.WriteLine();
         Console.WriteLine("Config saved.");
     }
 

@@ -30,7 +30,41 @@ try
                 var setupProv = GetArg(args, "--provider");
                 var setupModel = GetArg(args, "--model");
                 var setupKey = GetArg(args, "--api-key");
-                await DevOpsPilot.SetupAsync(setupPat, setupOrg, setupUrl, setupApiVer, setupProv, setupModel, setupKey);
+                var setupAuto = args.Any(a => a.Equals("--auto-model", StringComparison.OrdinalIgnoreCase));
+                await DevOpsPilot.SetupAsync(setupPat, setupOrg, setupUrl, setupApiVer, setupProv, setupModel, setupKey, setupAuto);
+            }
+            break;
+
+        case "models":
+            {
+                Console.WriteLine("  ── System hardware ──");
+                var hw = HardwareDetector.Detect();
+                Console.WriteLine($"  {hw}");
+                Console.WriteLine();
+
+                if (OllamaSetup.IsInstalled())
+                {
+                    var local = OllamaSetup.ListLocalModels();
+                    Console.WriteLine("  ── Local Ollama models ──");
+                    if (local.Count == 0)
+                        Console.WriteLine("  (none pulled — run 'devops-pilot setup' to get started)");
+                    else
+                        foreach (var m in local)
+                            Console.WriteLine($"    • {m}");
+                }
+                else
+                {
+                    Console.WriteLine("  Ollama is not installed.");
+                    Console.WriteLine($"  Install: {OllamaSetup.GetInstallInstructions()}");
+                }
+
+                Console.WriteLine();
+                Console.WriteLine("  ── Recommended models ──");
+                var recs = ModelRecommender.GetRecommendations(hw);
+                foreach (var r in recs)
+                    Console.WriteLine($"    • {r.Model,-20} — {r.Reason}");
+
+                Console.WriteLine();
             }
             break;
 
@@ -223,28 +257,30 @@ static void PrintLogo()
 static void PrintUsage()
 {
     Console.WriteLine("Usage:");
-    Console.WriteLine("  devops-pilot setup [--url <url>] [--org <org>] [--api-version <v>] [--provider <p>] [--model <m>]");
-    Console.WriteLine("  devops-pilot scan <project>              Analyze workflow (Scrum/Kanban/etc.)");
-    Console.WriteLine("  devops-pilot list projects                List all projects");
-    Console.WriteLine("  devops-pilot list <project> [iteration]   List active work items");
-    Console.WriteLine("  devops-pilot mine <project> <iteration>   Your work items in a sprint");
-    Console.WriteLine("  devops-pilot add <project> <type> <title> Create a work item");
-    Console.WriteLine("  devops-pilot done <id>                    Close a work item");
-    Console.WriteLine("  devops-pilot suggest <project>            LLM suggests what to work on");
-    Console.WriteLine("  devops-pilot chat [project]               Interactive AI chat about your tasks");
+    Console.WriteLine("  devops-pilot setup [--url <url>] [--org <org>] [--provider <p>] [--model <m>] [--auto-model]");
+    Console.WriteLine("  devops-pilot models                         Detect hardware & show model recommendations");
+    Console.WriteLine("  devops-pilot scan <project>                 Analyze workflow (Scrum/Kanban/etc.)");
+    Console.WriteLine("  devops-pilot list projects                  List all projects");
+    Console.WriteLine("  devops-pilot list <project> [iteration]     List active work items");
+    Console.WriteLine("  devops-pilot mine <project> <iteration>     Your work items in a sprint");
+    Console.WriteLine("  devops-pilot add <project> <type> <title>   Create a work item");
+    Console.WriteLine("  devops-pilot done <id>                      Close a work item");
+    Console.WriteLine("  devops-pilot suggest <project>              LLM suggests what to work on");
+    Console.WriteLine("  devops-pilot chat [project]                 Interactive AI chat about your tasks");
     Console.WriteLine();
-    Console.WriteLine("  devops-pilot memory <project>             Show saved project memories");
-    Console.WriteLine("  devops-pilot remember <p> <key> <value>   Save a fact about a project");
-    Console.WriteLine("  devops-pilot forget <project> <key>       Delete a saved fact");
-    Console.WriteLine("  devops-pilot sessions <project>           List past chat sessions");
-    Console.WriteLine("  devops-pilot recall <query>               Search past chat messages");
+    Console.WriteLine("  devops-pilot memory <project>               Show saved project memories");
+    Console.WriteLine("  devops-pilot remember <p> <key> <value>     Save a fact about a project");
+    Console.WriteLine("  devops-pilot forget <project> <key>         Delete a saved fact");
+    Console.WriteLine("  devops-pilot sessions <project>             List past chat sessions");
+    Console.WriteLine("  devops-pilot recall <query>                 Search past chat messages");
     Console.WriteLine();
     Console.WriteLine("Install: dotnet tool install -g JFToolkit.DevOpsPilot");
     Console.WriteLine("Requires: Azure DevOps / TFS PAT. LLM (Ollama/OpenAI/DeepSeek/Groq/xAI/LM Studio).");
     Console.WriteLine();
     Console.WriteLine("Setup examples:");
-    Console.WriteLine("  Cloud:  devops-pilot setup --org myorg --pat xxx");
-    Console.WriteLine("  TFS:    devops-pilot setup --url https://tfs.company.com/tfs/DefaultCollection --pat xxx --api-version 5.0");
+    Console.WriteLine("  Cloud:     devops-pilot setup --org myorg --pat xxx");
+    Console.WriteLine("  TFS:       devops-pilot setup --url https://tfs.company.com/tfs/DefaultCollection --pat xxx --api-version 5.0");
+    Console.WriteLine("  Auto LLM:  devops-pilot setup --org myorg --pat xxx --auto-model  (detects hardware, picks best model)");
 }
 
 static void Require(string[] a, int idx, string usage)
