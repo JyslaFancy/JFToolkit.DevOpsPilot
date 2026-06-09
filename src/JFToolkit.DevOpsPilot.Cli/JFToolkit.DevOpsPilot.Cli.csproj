@@ -12,7 +12,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>devops-pilot</ToolCommandName>
     <PackageId>JFToolkit.DevOpsPilot</PackageId>
-    <Version>0.4.4</Version>
+    <Version>0.4.5</Version>
     <Authors>Harald Daltveit</Authors>
     <Description>
       CLI tool for Azure DevOps / TFS — manage projects, work items, and get AI suggestions from terminal. Supports cloud, on-prem, and local LLMs (Ollama).

@@ -155,12 +155,23 @@ public static class HardwareDetector
 
             if (OperatingSystem.IsWindows())
             {
-                // PowerShell — Get-CimInstance Win32_VideoController
-                // Output: Name|AdapterRAM per line, sorted by RAM desc (dedicated GPU first)
+                // PowerShell — Get-CimInstance Win32_VideoController + registry fallback
+                // AdapterRAM is uint32 and overflows at 4 GB, so we also check the GPU
+                // registry key HardwareInformation.qwMemorySize which is a true QWORD.
                 var psResult = RunCommand("powershell",
-                    "-NoProfile -Command \"Get-CimInstance Win32_VideoController | " +
-                    "Sort-Object AdapterRAM -Descending | " +
-                    "ForEach-Object { $_.Name + '|' + $_.AdapterRAM }\"",
+                    "-NoProfile -Command \"" +
+                    "$gpus = Get-CimInstance Win32_VideoController | " +
+                    "Where-Object { $_.AdapterRAM -gt 0 -or $_.Name -notmatch 'Microsoft Basic' } | " +
+                    "Sort-Object AdapterRAM -Descending | Select-Object -First 3; " +
+                    "$regMax = 0; " +
+                    "Get-ChildItem 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Class\\{4d36e968-e325-11ce-bfc1-08002be10318}\\0*' " +
+                    "-ErrorAction SilentlyContinue | ForEach-Object { " +
+                    "$v = (Get-ItemProperty $_.PSPath -Name 'HardwareInformation.qwMemorySize' " +
+                    "-ErrorAction SilentlyContinue).'HardwareInformation.qwMemorySize'; " +
+                    "if ($v -and $v -gt $regMax) { $regMax = $v } }; " +
+                    "foreach ($g in $gpus) { " +
+                    "$vram = [Math]::Max([long]$g.AdapterRAM, [long]$regMax); " +
+                    "Write-Output ($g.Name + '|' + $vram) }\"",
                     timeoutMs: 10000);
 
                 if (!string.IsNullOrWhiteSpace(psResult))
